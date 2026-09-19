@@ -3,6 +3,7 @@ import { getAnalysis, saveProfile, errorMessage } from './services/api';
 import { useAuth } from './auth/AuthContext';
 import AuthPage from './pages/AuthPage';
 import SavedAnalysesPage from './pages/SavedAnalysesPage';
+import GitHubConnectionPage from './pages/GitHubConnectionPage';
 import { NavLink, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import SkillsPage from './pages/SkillsPage';
@@ -83,7 +84,7 @@ export default function App() {
         <div className="container py-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
           <span className="fw-semibold">Portfólio GitHub</span>
           <div className="d-flex flex-wrap align-items-center gap-2">
-            {user ? <><span className="small">{user.nome}</span><Link className="btn btn-sm btn-outline-primary" to="/minhas-analises">Minhas análises</Link><button className="btn btn-sm btn-outline-secondary" onClick={logout}>Sair</button></>
+            {user ? <><span className="small">{user.nome}</span><Link className="btn btn-sm btn-outline-primary" to="/minhas-analises">Minhas análises</Link><Link className="btn btn-sm btn-outline-secondary" to="/github">GitHub</Link><button className="btn btn-sm btn-outline-secondary" onClick={logout}>Sair</button></>
               : <><Link className="btn btn-sm btn-outline-primary" to="/login">Entrar</Link><Link className="btn btn-sm btn-primary" to="/cadastro">Criar conta</Link></>}
             <button type="button" className="btn btn-sm btn-outline-secondary"
               onClick={toggleTheme} aria-label="Modo escuro" aria-pressed={theme === 'dark'}
@@ -143,6 +144,7 @@ export default function App() {
           <Route path="/login" element={<AuthPage key="login" />} />
           <Route path="/cadastro" element={<AuthPage key="register" register />} />
           <Route path="/minhas-analises" element={<SavedAnalysesPage onOpen={openAnalysis} />} />
+          <Route path="/github" element={<GitHubConnectionPage key={user?.id || 'visitor'} />} />
           <Route path="/" element={analysis ? <HomePage analysis={analysis} /> : <p className="text-body-secondary text-center">Informe um perfil para começar.</p>} />
           <Route path="/perfil" element={analysis ? <HomePage analysis={analysis} /> : <EmptyAnalysis />} />
           <Route path="/skills" element={analysis ? <SkillsPage skills={analysis.skills} /> : <EmptyAnalysis />} />

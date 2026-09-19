@@ -6,7 +6,7 @@ Integração real entre React → ASP.NET Core Web API (.NET 8) → GitHub REST 
 
 Consulta pública sem login: perfil, repositórios, skills com evidências explicáveis e recomendações de estudo por regras. A Home mostra perfil, cobertura, até seis skills e três recomendações. As listas completas ficam em `/skills`, `/recomendacoes` e `/repositorios`; `/perfil` também mostra o resumo. Inclui loading, mensagens de erro, validação de username e Bootstrap 5 com tema claro/escuro.
 
-Inclui agora PostgreSQL com EF Core 8, contas da plataforma, cache compartilhado por seis horas e `/minhas-analises`. O Supabase é usado somente como hospedagem PostgreSQL. Não há OAuth do usuário, vagas, turmas ou IA.
+Inclui PostgreSQL com EF Core 8, contas da plataforma, cache compartilhado por seis horas e `/minhas-analises`. Uma conta autenticada pode conectar opcionalmente seu GitHub em `/github`, após habilitação segura pelo administrador: veja [configuração OAuth e proteção dos tokens](docs/github-autenticacao.md). Isso não substitui cadastro/login da plataforma. O Supabase é usado como PostgreSQL. Não há vagas, turmas ou IA.
 
 **Comece pelo [guia de persistência e Supabase](docs/persistencia.md)** para criar/configurar o banco, aplicar a migration inicial e testar cadastro, login e análises salvas. Sem banco configurado, a consulta pública continua disponível, mas cache e contas ficam indisponíveis.
 
@@ -103,7 +103,7 @@ No frontend:
 npm run build
 ```
 
-Validação histórica do primeiro marco em 17/09/2026 (a suíte atual possui 73 testes; veja o guia de persistência):
+Validação histórica do primeiro marco em 17/09/2026 (resultados das fases posteriores estão nos guias de persistência, deploy e autenticação):
 
 - Backend compilado em .NET 8, sem avisos ou erros.
 - Frontend compilado para produção.

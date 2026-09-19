@@ -1,6 +1,6 @@
 # Deploy manual gratuito: Vercel → Render → Supabase
 
-Este roteiro usa o repositório atual, sem trocar stack e sem criar outro banco. O Supabase existente já tem a migration aplicada. Nenhum deploy, conexão de conta ou alteração no banco foi feito automaticamente.
+Este roteiro usa o repositório atual, sem trocar stack e sem criar outro banco. O Supabase existente já possui a migration inicial. A conexão opcional de usuário GitHub acrescenta uma migration **manual**, descrita abaixo. Nenhum deploy, conexão de conta ou alteração no banco real foi feito automaticamente.
 
 ## Custos e limites
 
@@ -56,6 +56,10 @@ Todos os exemplos são fictícios. Insira valores reais somente no painel Enviro
 | `ConnectionStrings__Portfolio` | Sim para contas/cache | `Host=HOST_DO_POOLER;Port=5432;Database=postgres;Username=postgres.REFERENCIA;Password="SENHA_FICTICIA";SSL Mode=VerifyFull;Maximum Pool Size=10;Timeout=15;Command Timeout=30` | Supabase existente → Connect; senha do banco | **Sim** |
 | `GitHub__ClientId` | Sim no modo OAuth App atual | `ID_FICTICIO` | GitHub Settings → Developer settings → OAuth Apps → seu app | Identificador público, manter no backend |
 | `GitHub__ClientSecret` | Sim junto com ClientId | `SEGREDO_FICTICIO` | mesmo OAuth App; segredo guardado por você | **Sim** |
+| `GitHub__OAuth__Enabled` | Opcional, padrão false; true após preparar OAuth de usuário | `true` | habilitação manual | Não |
+| `GitHub__OAuth__CallbackUrl` | Sim quando OAuth de usuário habilitado | `https://guiadogit-api.onrender.com/api/github/callback` | callback do backend | Não |
+| `DataProtection__CertificateBase64` | Sim quando OAuth de usuário habilitado | `PFX_BASE64_FICTICIO` | arquivo privado gerado conforme guia OAuth | **Sim, chave privada** |
+| `DataProtection__CertificatePassword` | Sim para o PFX gerado | `SENHA_FICTICIA` | mesmo arquivo privado | **Sim** |
 | `Frontend__BaseUrl` | Sim para integrar Vercel; pode omitir no primeiro deploy | `https://portfolio-example.vercel.app` | domínio de produção do frontend Vercel | Não |
 | `GitHubAnalysisCacheHours` | Opcional, padrão 6 | `6` | configuração do projeto | Não |
 | `GitHub__UserAgent` | Opcional, padrão existente | `PortfolioCourseProject/1.0` | configuração do projeto | Não |
@@ -98,26 +102,51 @@ Mantenha SSL com validação (`VerifyFull`). Se a configuração local usa um ca
 
 Em Development continua `Cors:AllowedOrigins`, incluindo localhost:5173. Em Production somente `Frontend__BaseUrl` é permitida; localhost não é herdado. A URL deve ser HTTPS sem caminho, query, credenciais ou wildcard. Uma barra final é normalizada. Domínios temporários de Preview não são automaticamente liberados; teste pelo domínio estável. Se trocar para um Preview para testes, atualize a origem exata e depois restaure a de produção.
 
-O preflight permite GET/POST/PUT/DELETE e headers, incluindo Authorization. Não há `AllowAnyOrigin`, cookies de autenticação ou `AllowCredentials`. O bearer oficial continua em memória, expira em 30 minutos, é enviado apenas para endpoints pessoais e respostas 401 encerram a sessão. Logout local e proteção `[Authorize]` permanecem. Render termina TLS na borda e encaminha HTTP ao container; não foi adicionado redirecionamento HTTPS interno que causaria loops. Use sempre as URLs públicas HTTPS.
+O preflight permite GET/POST/PUT/DELETE e headers, incluindo Authorization. Não há `AllowAnyOrigin`, cookies de autenticação da plataforma ou `AllowCredentials`. O bearer oficial continua em memória, expira em 30 minutos e acompanha endpoints pessoais e consultas de análise/GitHub quando há sessão. Respostas 401 encerram a sessão. Logout local e proteção `[Authorize]` permanecem. O OAuth usa somente um cookie temporário de correlação HttpOnly/Secure/SameSite=Lax, estabelecido pela navegação da janela de conexão, sem alterar CORS. Render termina TLS na borda e encaminha HTTP ao container; não foi adicionado redirecionamento HTTPS interno que causaria loops. Use sempre as URLs públicas HTTPS.
 
 Não foi habilitada confiança irrestrita em `X-Forwarded-For`. O limitador de login pode agrupar visitantes pelo IP do proxy Render (30 requisições/minuto); a trava por conta do Identity continua ativa. Se houver 429 em uma apresentação com várias pessoas, espere um minuto. Configurar proxies confiáveis e limites para tráfego maior fica fora deste MVP.
 
-## Migrations: manuais, sem alteração nesta etapa
+## Migrations: manuais
 
-A migration inicial já está aplicada no Supabase: **não precisa reaplicá-la para este deploy**. O startup apenas consulta disponibilidade e migrations pendentes, sem `Migrate`, `EnsureCreated`, reset ou exclusão. Nenhuma migration nova foi criada nesta etapa.
+A migration inicial já está aplicada no Supabase. A nova `20260919170906_AddGitHubOAuthConnections` cria somente `portfolio.GitHubConnections`, `GitHubOAuthAttempts` e `DataProtectionKeys`, índices e relacionamentos. Ela não foi aplicada ao banco real. Revise e aplique manualmente **antes de habilitar OAuth**. O startup apenas consulta disponibilidade e migrations pendentes, sem `Migrate`, `EnsureCreated`, reset ou exclusão.
 
-Para uma mudança de modelo futura, revise a migration e seu SQL, faça backup adequado antes de alterações de dados e execute da sua máquina (raiz do repositório), usando os User Secrets existentes que apontam ao mesmo Supabase:
+Na raiz, gere o SQL sem carregar User Secrets ou conectar ao banco:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = 'Testing'
+$env:DOTNET_ENVIRONMENT = 'Testing'
+$env:GitHub__OAuth__Enabled = 'false'
+dotnet tool restore
+New-Item -ItemType Directory -Force .artifacts | Out-Null
+dotnet ef migrations script 20260918122632_InitialPostgreSql 20260919170906_AddGitHubOAuthConnections --idempotent --project backend/Portfolio.Api --output .artifacts/github-oauth-migration.sql
+```
+
+Após revisar o SQL e preparar backup, aplique usando sua conexão existente nos User Secrets:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
-dotnet tool restore
-dotnet ef migrations list --project backend/Portfolio.Api
-dotnet ef migrations script --idempotent --project backend/Portfolio.Api --output migration-review.sql
-# Após revisar o SQL, aplique somente as pendentes:
-dotnet ef database update --project backend/Portfolio.Api
+$env:DOTNET_ENVIRONMENT = 'Development'
+$env:GitHub__OAuth__Enabled = 'false'
+dotnet ef database update 20260919170906_AddGitHubOAuthConnections --project backend/Portfolio.Api
+Remove-Item Env:GitHub__OAuth__Enabled
+Remove-Item Env:DOTNET_ENVIRONMENT
+Remove-Item Env:ASPNETCORE_ENVIRONMENT
 ```
 
-`database update` sem destino aplica migrations pendentes, não apaga o banco automaticamente; uma migration escrita com operações destrutivas ainda pode apagar dados, por isso a revisão é necessária. Não use `database drop`, `database update 0`, `EnsureDeleted` ou alteração manual do histórico. Não configure migrations no build/start do Render, nem dependa de shell/jobs pagos. Se não há mudança de modelo, pule estes comandos.
+Execute esse update enquanto esta for a migration mais recente. Não use `database drop`, `database update 0`, `EnsureDeleted`, downgrade nem alteração manual do histórico. Não configure migrations no build/start do Render, nem dependa de shell/jobs pagos. O roteiro detalhado está no [guia OAuth](github-autenticacao.md).
+
+## Habilitar conexão GitHub no deploy existente
+
+1. Revise/aplique a migration acima manualmente. É aditiva e compatível com o backend anterior.
+2. Gere **uma única vez** o certificado privado seguindo [geração e backup](github-autenticacao.md#gerar-a-proteção-uma-única-vez-manualmente). Não copie secrets para o repositório.
+3. Em GitHub → Settings → Developer settings → OAuth Apps → app existente: Homepage `https://guiadogit.vercel.app`; Authorization callback URL **`https://guiadogit-api.onrender.com/api/github/callback`**. Salve. Device Flow fica desabilitado; nenhum scope adicional é solicitado.
+4. No Render → serviço `guiadogit-api` → Environment, mantenha ClientId/ClientSecret/conexão Supabase. Adicione as quatro variáveis novas da tabela e confirme `Frontend__BaseUrl=https://guiadogit.vercel.app`.
+5. Publique o código e faça deploy manual do backend com as variáveis. Não execute migrations pelo Render. Confirme `/health` e `/api/database/status`.
+6. No Vercel, publique o frontend atualizado, preservando `VITE_API_BASE_URL=https://guiadogit-api.onrender.com`. Não adicione secret. O fallback SPA existente também cobre `/github`.
+7. Entre novamente na plataforma se necessário; a primeira ativação muda o keyring anterior. Abra **GitHub → Conectar GitHub**, autorize na janela e confira estado. Se necessário, use **Atualizar estado** ao retornar.
+8. Teste cache, uma atualização explícita, desconexão e persistência após restart conforme [checklist OAuth](github-autenticacao.md#verificação-manual-localdeploy). Não faça pings para evitar sleep.
+
+Para publicar o código antes de preparar a configuração, mantenha `GitHub__OAuth__Enabled=false`; login/visitantes continuam usando o comportamento anterior. Mesmo assim, aplique a migration antes de exigir `migrationsApplied=true` no diagnóstico desta versão.
 
 ## Cache, logs e sessões
 
@@ -125,7 +154,7 @@ Seis horas definem apenas o prazo de frescor. **Nada é apagado por expiração*
 
 Os logs registram ambiente/inicialização, banco disponível/indisponível, quantidade de migrations pendentes, status de falhas GitHub e tipos de falhas de integração. Os logs próprios não registram bodies, headers, parâmetros, URL de conexão ou mensagens brutas de exceção. Em Production, logs brutos do EF/Npgsql/HttpClient e do middleware de exceções são desativados; falhas HTTP 5xx geram status e TraceId. Não habilite SensitiveDataLogging, HTTP body logging ou dumps de ambiente para diagnosticar secrets.
 
-O filesystem gratuito Render é efêmero. As chaves Data Protection dos bearer tokens não são persistidas externamente nesta fase: após restart/redeploy/sleep, pode ser necessário entrar novamente antes dos 30 minutos. Nenhuma conta ou análise é perdida, pois esses dados estão no Supabase. Não há disco pago ou solução própria de token. Esta limitação é aceitável para a sessão transitória do MVP; não promete sessões duráveis entre reinícios.
+O filesystem gratuito Render é efêmero. Com OAuth habilitado, Data Protection persiste o keyring no PostgreSQL **criptografado pelo certificado privado do Environment**, protegendo também tokens GitHub. Preserve certificado/senha e keyring entre deploys; mantenha backup privado de ambos. Ambientes que usam o mesmo banco/keyring precisam do mesmo certificado. Com o recurso desabilitado, continua o comportamento anterior de chaves locais efêmeras. O bearer da plataforma ainda dura 30 minutos e permanece somente na memória da aba, portanto recarregar a página exige login independentemente da persistência das chaves. Não há disco pago nem JWT próprio.
 
 ## Parte D — Smoke test após deploy
 
@@ -143,6 +172,11 @@ O filesystem gratuito Render é efêmero. As chaves Data Protection dos bearer t
 - [ ] Refresh direto de todas as rotas React não dá 404.
 - [ ] Celular abre a aplicação.
 - [ ] Layout básico e tema claro/escuro continuam funcionais.
+- [ ] Conta autenticada conecta GitHub; o estado mostra o usuário autorizado, sem tokens.
+- [ ] Uma análise fresca continua vindo do cache após conectar.
+- [ ] Uma atualização explícita utiliza a conexão; a quota exibida vem dos headers observados.
+- [ ] Desconectar preserva conta, análises salvas e cache.
+- [ ] Reiniciar o backend não inutiliza a conexão GitHub; certificado e keyring permanecem iguais.
 
 Se aparecer CORS: confira a origem exata no Render e aguarde o redeploy. Se o navegador tentar localhost: confira `VITE_API_BASE_URL` e refaça o build Vercel. Se banco der 503: confira string Npgsql, SSL, pooler/IPv4 e projeto Supabase ativo. Se login der 401 após restart: entre novamente. Se GitHub retornar 429: aguarde o reset informado, use análises salvas e não force refresh repetidamente.
 
@@ -158,7 +192,7 @@ npm --prefix frontend run build
 docker build -f backend/Portfolio.Api/Dockerfile -t portfolio-deploy-check .
 ```
 
-Os testes completos exigem Docker Desktop (PostgreSQL descartável), sem usar o Supabase real ou GitHub real. Foram preservados os 73 testes anteriores e adicionados 11 testes/casos de porta, CORS, health e status do banco: **84 aprovados**. Builds .NET/Vite e Docker aprovados. O banco real foi consultado apenas pelo diagnóstico de leitura, sem migrations ou dados de teste. O deploy remoto e o comportamento real do domínio Vercel/Render só podem ser confirmados por você após publicar.
+Os testes completos exigem Docker Desktop (PostgreSQL descartável), sem usar Supabase ou GitHub reais. A etapa de deploy tinha **84 testes**; a etapa OAuth preserva esses testes e acrescenta validações de conexão, segurança, cache e persistência das chaves. Durante a implementação OAuth não houve acesso a User Secrets, consultas GitHub reais, migration no Supabase ou deploy. O fluxo real de autorização e as políticas de janela/cookie do navegador devem ser confirmados por você após a configuração.
 
 ## Arquivos desta etapa
 

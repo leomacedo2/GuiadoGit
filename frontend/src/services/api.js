@@ -10,7 +10,8 @@ const api = axios.create({
 let accessToken = null;
 export function setAccessToken(value) { accessToken = value; }
 api.interceptors.request.use(config => {
-  if (accessToken && (config.url.startsWith('/api/me/') || config.url === '/api/auth/me')) {
+  if (accessToken && (config.url.startsWith('/api/me/') || config.url === '/api/auth/me'
+    || config.url.startsWith('/api/analyses/') || config.url.startsWith('/api/github/'))) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
   return config;
@@ -32,6 +33,25 @@ export function errorMessage(error) {
 export async function registerAccount(form) { return (await api.post('/api/auth/register', form)).data; }
 export async function loginAccount(form) { return (await api.post('/api/auth/login', form)).data; }
 export async function getCurrentUser() { return (await api.get('/api/auth/me')).data; }
+export async function getGitHubConnection() { return (await api.get('/api/github/connection')).data; }
+export async function disconnectGitHub() { await api.delete('/api/github/connection'); }
+export const apiOrigin = new URL(api.defaults.baseURL, window.location.origin).origin;
+
+export function connectGitHub() {
+  if (!accessToken) throw new Error('Entre na plataforma para conectar o GitHub.');
+  const name = `github-connect-${crypto.randomUUID()}`;
+  const popup = window.open('about:blank', name, 'popup,width=640,height=760');
+  if (!popup) throw new Error('Permita pop-ups deste site para conectar o GitHub.');
+  // Top-level POST establishes a first-party correlation cookie on the backend.
+  // Only the existing platform bearer is submitted; GitHub tokens never reach React.
+  const form = document.createElement('form');
+  form.method = 'POST'; form.action = `${api.defaults.baseURL.replace(/\/$/, '')}/api/github/connect`; form.target = name;
+  const field = document.createElement('input');
+  field.type = 'hidden'; field.name = 'platformToken'; field.value = accessToken;
+  form.append(field); document.body.append(form);
+  try { form.submit(); } finally { field.value = ''; form.remove(); }
+  return popup;
+}
 export async function getSavedProfiles() { return (await api.get('/api/me/profiles')).data; }
 export async function saveProfile(id) { await api.put(`/api/me/profiles/${id}`); }
 export async function removeProfile(id) { await api.delete(`/api/me/profiles/${id}`); }

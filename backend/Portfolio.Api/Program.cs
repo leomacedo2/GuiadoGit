@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Portfolio.Api.Deployment;
+using Portfolio.Api.OAuth;
 
 var builder = WebApplication.CreateBuilder(args);
 var listenUrl = DeploymentConfiguration.ListenUrl(builder.Configuration, builder.Environment.IsDevelopment());
@@ -17,6 +18,18 @@ builder.Services.AddExceptionHandler<DatabaseExceptionHandler>();
 builder.Services.AddDbContext<PortfolioDbContext>(options => options.UseNpgsql(
     builder.Configuration.GetConnectionString("Portfolio") ?? "",
     provider => provider.MigrationsHistoryTable("__EFMigrationsHistory", "portfolio")));
+builder.Services.AddSingleton(GitHubOAuthConfiguration.Configure(builder));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<GitHubRequestContext>();
+builder.Services.AddScoped<GitHubTokenProtection>();
+builder.Services.AddSingleton<UserGitHubQuotas>();
+builder.Services.AddHttpClient<GitHubOAuthClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.MaxResponseContentBufferSize = 128 * 1024;
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(builder.Configuration["GitHub:UserAgent"] ?? "PortfolioCourseProject/1.0");
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {
     options.User.RequireUniqueEmail = true;
@@ -25,7 +38,25 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
 }).AddEntityFrameworkStores<PortfolioDbContext>().AddSignInManager();
 builder.Services.AddAuthentication(IdentityConstants.BearerScheme).AddBearerToken(IdentityConstants.BearerScheme,
-    options => options.BearerTokenExpiration = TimeSpan.FromMinutes(30));
+    options =>
+    {
+        options.BearerTokenExpiration = TimeSpan.FromMinutes(30);
+        // Only this top-level popup POST accepts the platform bearer in its form body.
+        // It is still validated by the official bearer handler, never taken from the URL.
+        options.Events.OnMessageReceived = async context =>
+        {
+            if (context.Request.Path == "/api/github/connect" && HttpMethods.IsPost(context.Request.Method) && context.Request.HasFormContentType)
+            {
+                if (context.Request.ContentLength is null or > 16384)
+                {
+                    context.Fail("Formulário de conexão inválido.");
+                    return;
+                }
+                var form = await context.Request.ReadFormAsync(context.HttpContext.RequestAborted);
+                context.Token = form["platformToken"];
+            }
+        };
+    });
 builder.Services.AddAuthorization();
 builder.Services.AddRateLimiter(options =>
 {

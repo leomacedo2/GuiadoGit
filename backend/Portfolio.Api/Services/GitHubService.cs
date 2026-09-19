@@ -2,10 +2,11 @@ using System.Net;
 using System.Text.Json;
 using Portfolio.Api.DTOs;
 using Portfolio.Api.Models;
+using Portfolio.Api.OAuth;
 
 namespace Portfolio.Api.Services;
 
-public sealed class GitHubService(HttpClient client) : IGitHubService
+public sealed class GitHubService(HttpClient client, GitHubRequestContext? context = null) : IGitHubService
 {
     public int RequestCount { get; private set; }
     public Task<GitHubTree> GetTreeAsync(string username, string repository, CancellationToken cancellationToken)
@@ -67,6 +68,11 @@ public sealed class GitHubService(HttpClient client) : IGitHubService
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
         using var response = await SendCountedAsync(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Unauthorized && context?.UsesUserToken == true)
+        {
+            await context.InvalidateAsync(cancellationToken);
+            throw new GitHubApiException(502, "Sua conexão GitHub precisa ser renovada. A próxima consulta poderá usar a autenticação da aplicação.");
+        }
         if (response.StatusCode == HttpStatusCode.NotFound)
             throw new GitHubApiException(404, "Usuário não encontrado no GitHub. Confira o username informado.");
         if (response.StatusCode == HttpStatusCode.TooManyRequests ||
@@ -93,6 +99,7 @@ public sealed class GitHubService(HttpClient client) : IGitHubService
 
     private async Task<HttpResponseMessage> SendCountedAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        if (context is not null) await context.PrepareAsync(request, cancellationToken);
         try { return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken); }
         finally
         {
