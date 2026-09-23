@@ -15,7 +15,7 @@ function snapshot(username = 'perfil-teste') {
       { name: 'Full Stack', area: 'Full Stack', demonstratedSkills: ['React', 'ASP.NET Core', 'PostgreSQL'], nextSteps: [{ topic: 'Testes de integração', reason: 'Há sinais de interface e backend.', nextStep: 'Teste uma operação entre interface e API.', consideredSkills: ['React', 'ASP.NET Core'] }] }]
   };
 }
-async function mockApi(page, saved = false) {
+async function mockApi(page, saved = false, transform = value => value) {
   const calls = [];
   let profiles = saved ? [{ gitHubProfileId: 'saved-1', username: 'perfil-teste', nome: 'Perfil de Demonstração', avatarUrl: avatar, latest: { analyzedAt: '2026-09-23T12:00:00Z', isComplete: true, skills: ['React'] }, isExpired: false }] : [];
   await page.route('**/*', async route => {
@@ -35,7 +35,7 @@ async function mockApi(page, saved = false) {
       if (path.startsWith('/api/analyses/')) {
         const result = snapshot(decodeURIComponent(path.split('/')[3]));
         if (path.endsWith('/refresh')) { result.source = 'github'; result.currentGitHubRequests = 9; }
-        return reply(result);
+        return reply(transform(result));
       }
       return route.fulfill({ status: 404, json: { detail: 'Endpoint não simulado' } });
     }
@@ -175,4 +175,26 @@ test('snapshot legado não usa pushed_at como histórico nem força atualizaçã
   await expect(panel.getByText('Este snapshot ainda não possui histórico de commits. Atualize a análise pelo GitHub para gerar esse gráfico.')).toBeVisible();
   await expect(panel.locator('canvas')).toHaveCount(0);
   expect(calls.filter(c => c.path.startsWith('/api/analyses/'))).toHaveLength(0);
+});
+
+test('trilha base representada mostra aprofundamento e mantém leitura de snapshot antigo', async ({ page }) => {
+  let legacy = false;
+  await mockApi(page, false, result => ({ ...result, learningTracks: [{
+    name: 'Backend .NET', area: 'Backend', demonstratedSkills: ['ASP.NET Core', 'PostgreSQL'],
+    ...(legacy ? {} : { baseWellRepresented: true, progressionMessage: 'A trilha base está bem representada nos repositórios. Veja alguns próximos desafios de aprofundamento.' }),
+    nextSteps: legacy ? [] : [{ topic: 'Testes de integração', reason: 'Há evidências de API e persistência. Não encontramos evidência de testes de integração.',
+      nextStep: 'Crie testes de integração com WebApplicationFactory e um banco de teste.', consideredSkills: ['ASP.NET Core', 'PostgreSQL'], stage: 'Qualidade' }]
+  }] }));
+  await page.goto('/perfil/perfil-teste');
+  await nav(page, 'Recomendações');
+  await expect(page.getByText('A trilha base está bem representada', { exact: false })).toBeVisible();
+  await expect(page.getByText('Crie testes de integração com WebApplicationFactory e um banco de teste.')).toBeVisible();
+  await page.getByText('Por que esta sugestão?', { exact: true }).click();
+  await expect(page.getByText('Não encontramos evidência de testes de integração.', { exact: false })).toBeVisible();
+  await noOverflow(page);
+  legacy = true;
+  await page.goto('/perfil/perfil-teste');
+  await nav(page, 'Recomendações');
+  await expect(page.getByText('Não há sugestões adicionais com os pré-requisitos observados neste snapshot.', { exact: false })).toBeVisible();
+  await expect(page.getByText('A trilha base está bem representada', { exact: false })).toHaveCount(0);
 });

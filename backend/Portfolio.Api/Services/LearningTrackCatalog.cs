@@ -1,7 +1,20 @@
 namespace Portfolio.Api.Services;
 
-public sealed record LearningStep(string Topic, string[] Signals, string[][] Requires, string Practice, bool Milestone = true);
-public sealed record LearningTrack(string Name, string[][] Entry, LearningStep[] Steps);
+public enum LearningStage { Fundamentals, Applications, Persistence, Quality, Architecture, Production, Deepening }
+public sealed record LearningStep(string Topic, string[] Signals, string[][] Requires, string Practice, bool Milestone = true)
+{
+    public LearningStage Stage { get; init; }
+    public bool Advanced { get; init; }
+    public int Priority { get; init; }
+    public string[][] BoostWhen { get; init; } = [];
+    public int Boost { get; init; }
+    public string Rationale { get; init; } = "Consolide a próxima etapa da trilha em um projeto já existente.";
+    public string? Concept { get; init; }
+}
+public sealed record LearningTrack(string Name, string[][] Entry, LearningStep[] Steps)
+{
+    public string[][] BaseEvidence { get; init; } = [];
+}
 
 public static class LearningTrackCatalog
 {
@@ -94,5 +107,5 @@ public static class LearningTrackCatalog
             S("SQL", "SQL,PostgreSQL,SQLite,MySQL,SQL Server", "Pandas,NumPy", "Carregue um conjunto de dados em SQL e documente consultas de validação.", false),
             S("Testes de dados", "Testes de dados,pytest", "Pandas,NumPy", "Teste valores ausentes, duplicatas e limites em uma transformação de dados.", false),
             S("Pipeline de dados", "Pipeline de dados", "Pandas,NumPy;SQL,PostgreSQL,SQLite", "Organize extração, validação e carga reproduzíveis, registrando entradas e saídas.", false))
-    ]).ToArray();
+    ]).Select(LearningTrackProgression.Expand).ToArray();
 }

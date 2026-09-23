@@ -84,14 +84,16 @@ public sealed class AnalysisTests
     }
 
     [Fact]
-    public void RecommendationsExplainContextAndDisappearWithMoreEvidence()
+    public void RecommendationsExplainContextAndProgressWithMoreEvidence()
     {
         SkillDto Skill(string name, int count = 1) => new(name, "Test", "Pouca evidência", count, []);
         var service = new RecommendationService();
         var result = service.Recommend([Skill("Java"), Skill("Maven"), Skill("Spring Boot"), Skill("REST API")]);
         Assert.Equal(new[] { "JPA", "JUnit", "Docker" }, result.Select(r => r.Topic));
         Assert.All(result, r => { Assert.NotEmpty(r.Reason); Assert.NotEmpty(r.NextStep); });
-        Assert.Empty(service.Recommend([Skill("Java"), Skill("Maven"), Skill("Spring Boot"), Skill("REST API"), Skill("JPA"), Skill("SQL"), Skill("JUnit", 2), Skill("Docker", 2)]));
+        var advanced = service.Recommend([Skill("Java"), Skill("Maven"), Skill("Spring Boot"), Skill("REST API"), Skill("JPA"), Skill("SQL"), Skill("JUnit", 2), Skill("Docker", 2)]);
+        Assert.Contains(advanced, r => r.Topic == "Testes de integração");
+        Assert.DoesNotContain(advanced, r => r.Topic is "JUnit" or "Docker" or "JPA" or "SQL");
     }
 
     [Fact]

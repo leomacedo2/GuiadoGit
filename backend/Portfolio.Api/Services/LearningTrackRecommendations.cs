@@ -14,12 +14,16 @@ public sealed partial class RecommendationService
             .Where(t => t.Name is not ("Frontend React" or "Full Stack") || !(Has("React Native") || Has("Expo")) || Has("HTML") || Has("CSS") || Has("React Router"))
             .Select(track =>
             {
-                var matched = track.Steps.Where(s => s.Signals.Any(Has)).ToList();
+                var matched = track.Steps.Where(s => !s.Advanced && s.Signals.Any(Has)).ToList();
                 var score = matched.Count * 10 + matched.Sum(s => s.Signals.Where(Has).Max(n => Math.Min(observed[n].RepositoryCount, 5)));
                 var frontier = Array.FindLastIndex(track.Steps, s => s.Milestone && s.Signals.Any(Has)
                     && (!(s.Topic is "REST API" or "API REST" or "Web API") || Ready(s.Requires)));
                 var candidates = track.Steps.Skip(frontier + 1).Where(s => !s.Signals.Any(Has) && Ready(s.Requires))
-                    .Where(s => !(s.Topic == "POO" && Has("CRUD"))).ToList();
+                    .Where(s => !(s.Topic == "POO" && Has("CRUD")))
+                    .OrderBy(s => s.Advanced)
+                    .ThenByDescending(s => s.Advanced ? s.Priority + (s.BoostWhen.Length > 0 && Ready(s.BoostWhen) ? s.Boost : 0)
+                        + Math.Min(10, s.Requires.Sum(g => g.Where(Has).Select(n => observed[n].RepositoryCount).DefaultIfEmpty().Max())) : 0)
+                    .ToList();
                 var signals = track.Steps.SelectMany(s => s.Signals).Concat(candidates.SelectMany(s => s.Requires.SelectMany(g => g)))
                     .Distinct(StringComparer.OrdinalIgnoreCase).Where(Has).ToList();
                 return new Ranked(track, Area(track.Name), score, candidates, signals);
@@ -43,13 +47,21 @@ public sealed partial class RecommendationService
             foreach (var step in item.Candidates)
             {
                 if (next.Count == 4) break;
-                if (!used.Add(TopicKey(step.Topic))) continue;
-                var summary = string.Join(", ", item.Signals.Select(name => $"{name} ({observed[name].RepositoryCount} repositório(s))"));
+                if (!used.Add(step.Concept ?? TopicKey(step.Topic))) continue;
+                var considered = step.Requires.Select(g => g.Where(Has).OrderByDescending(n => observed[n].RepositoryCount)
+                    .ThenBy(n => n, StringComparer.Ordinal).First()).Distinct(StringComparer.OrdinalIgnoreCase).Take(5).ToList();
+                var summary = string.Join(", ", considered.Select(name => $"{name} ({observed[name].RepositoryCount} repositório(s))"));
                 next.Add(new(step.Topic,
-                    $"Evidências consideradas: {summary}. {step.Topic} ainda não foi demonstrado na cobertura consultada; os pré-requisitos da sugestão têm sinais presentes. Ausência de evidência não significa falta de conhecimento.",
-                    step.Practice, item.Signals));
+                    $"Evidências consideradas: {summary}. {step.Rationale} Não encontramos evidência de {step.Topic} nos repositórios analisados. Ausência de evidência não significa falta de conhecimento.",
+                    step.Practice, considered) { Stage = LearningTrackProgression.StageName(step.Stage) });
             }
-            output.Add(new(item.Track.Name, item.Area, item.Signals, next));
+            var baseCovered = item.Track.BaseEvidence.Length > 0 && Ready(item.Track.BaseEvidence);
+            output.Add(new(item.Track.Name, item.Area, item.Signals, next)
+            {
+                BaseWellRepresented = baseCovered,
+                ProgressionMessage = baseCovered && next.Count > 0
+                    ? "A trilha base está bem representada nos repositórios. Veja alguns próximos desafios de aprofundamento." : null
+            });
         }
         return output.OrderBy(t => t.Area switch { "Frontend" => 0, "Backend" => 1, "Full Stack" => 2, _ => 3 }).ToList();
     }
@@ -75,6 +87,16 @@ public sealed partial class RecommendationService
     private static string Area(string name) => name.StartsWith("Backend") ? "Backend" : name.StartsWith("Frontend") ? "Frontend"
         : name.StartsWith("Mobile") ? "Mobile" : name.StartsWith("Dados") ? "Dados" : "Full Stack";
     // Equivalent SQL goals should not be repeated just because the roadmaps name them differently.
-    private static string TopicKey(string topic) => topic is "SQL" or "Banco SQL" or "Persistência SQL" ? "SQL" : topic;
+    private static string TopicKey(string topic) => topic switch
+    {
+        "SQL" or "Banco SQL" or "Persistência SQL" => "SQL",
+        "Testes de integração" => "integration-tests",
+        "Autenticação integrada" or "Autenticação e autorização" or "Spring Security" => "authentication",
+        "Docker" or "Docker Compose" => "containers",
+        "CI/CD" or "CI/CD frontend" => "ci-cd",
+        "Tratamento global de erros" => "error-handling",
+        "Observabilidade" => "observability",
+        _ => topic
+    };
     private sealed record Ranked(LearningTrack Track, string Area, int Score, List<LearningStep> Candidates, List<string> Signals);
 }

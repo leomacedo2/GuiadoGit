@@ -24,7 +24,8 @@ export default function RecommendationsPage({ analysis }) {
           <h3 className="h6 mt-3">Já demonstrado nos repositórios</h3>
           <div className="d-flex flex-wrap gap-2 mb-4">{track.demonstratedSkills.map(name => <span className="badge bg-success-subtle text-success-emphasis text-wrap" key={name}>✓ {name}</span>)}</div>
           <h3 className="h6">Próximos passos</h3>
-          {!track.nextSteps.length && <p>As regras atuais não encontraram novos passos próximos. Isso não significa que a trilha foi dominada.</p>}
+          {track.progressionMessage && <p className="text-body-secondary">{track.progressionMessage}</p>}
+          {!track.nextSteps.length && <p>Não há sugestões adicionais com os pré-requisitos observados neste snapshot. Isso não significa domínio da trilha nem ausência de possibilidades de estudo.</p>}
           <ol className="list-group list-group-numbered">
             {track.nextSteps.map(step => <li className="list-group-item" key={step.topic}>
               <strong>{step.topic}</strong><p className="mt-2 mb-2">{step.nextStep}</p>

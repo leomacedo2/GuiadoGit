@@ -24,7 +24,7 @@ public sealed class LearningTrackTests
 
     [Fact]
     public void PythonCrudHasFrameworkAndTestsButNotPrematureRestOrDocker()
-        => Assert.Equal(new[] { "Flask/FastAPI", "Testes automatizados" }, Recommend("Python", "SQLite", "CRUD").Select(r => r.Topic));
+        => Assert.Equal(new[] { "Flask/FastAPI", "Testes com pytest" }, Recommend("Python", "SQLite", "CRUD").Select(r => r.Topic));
 
     [Fact]
     public void SingleLanguageDoesNotTriggerDeployment()
@@ -47,7 +47,7 @@ public sealed class LearningTrackTests
     public void EvidenceIsTraceableAndAlreadyObservedTopicsAreExcluded()
     {
         var result = Recommend("HTML", "CSS", "JavaScript", "TypeScript", "React", "React Router", "Consumo de API");
-        Assert.Equal("Testes automatizados", Assert.Single(result).Topic);
+        Assert.Equal(new[] { "Testes de frontend", "Acessibilidade", "Gerenciamento de estado" }, result.Select(r => r.Topic));
         Assert.All(result, r => { Assert.NotEmpty(r.Reason); Assert.NotEmpty(r.NextStep); Assert.NotEmpty(r.ConsideredEvidence); Assert.All(r.ConsideredEvidence, e => Assert.NotEmpty(e.Evidence)); });
     }
 

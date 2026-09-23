@@ -3,8 +3,15 @@ namespace Portfolio.Api.DTOs;
 public sealed record EvidenceDto(long RepositoryId, string RepositoryName, string RepositoryUrl, string Reason);
 public sealed record SkillDto(string Name, string Category, string EvidenceLevel, int RepositoryCount, IReadOnlyList<EvidenceDto> Evidence);
 public sealed record RecommendationEvidenceDto(string Skill, int RepositoryCount, IReadOnlyList<EvidenceDto> Evidence);
-public sealed record LearningStepDto(string Topic, string Reason, string NextStep, IReadOnlyList<string> ConsideredSkills);
-public sealed record LearningTrackDto(string Name, string Area, IReadOnlyList<string> DemonstratedSkills, IReadOnlyList<LearningStepDto> NextSteps);
+public sealed record LearningStepDto(string Topic, string Reason, string NextStep, IReadOnlyList<string> ConsideredSkills)
+{
+    public string? Stage { get; init; }
+}
+public sealed record LearningTrackDto(string Name, string Area, IReadOnlyList<string> DemonstratedSkills, IReadOnlyList<LearningStepDto> NextSteps)
+{
+    public bool BaseWellRepresented { get; init; }
+    public string? ProgressionMessage { get; init; }
+}
 public sealed record RecommendationDto(string Topic, string Reason, string NextStep)
 {
     public string Track { get; init; } = "";
