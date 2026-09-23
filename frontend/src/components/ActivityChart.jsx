@@ -7,7 +7,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 export default function ActivityChart({ months, series }) {
   const palette = useChartTheme();
   const data = { labels: months.map(monthLabel), datasets: series.map((item, i) => ({
-    label: item.name, data: item.counts, backgroundColor: palette.series[i], borderRadius: 3,
+    label: item.name, data: item.counts, backgroundColor: palette.series[i % palette.series.length], borderRadius: 3,
   })) };
   const options = {
     responsive: true, maintainAspectRatio: false, animation: false,
@@ -17,5 +17,5 @@ export default function ActivityChart({ months, series }) {
     scales: { x: { ticks: { color: palette.text, maxRotation: 60 }, grid: { display: false } },
       y: { beginAtZero: true, title: { display: true, text: 'Commits', color: palette.text }, ticks: { precision: 0, color: palette.text }, grid: { color: palette.border } } },
   };
-  return <div className="evidence-chart" style={{ height: 320 }}><Bar data={data} options={options} role="img" aria-label="Commits por tecnologia e mês. Dados na tabela abaixo." /></div>;
+  return <div className="evidence-chart" style={{ height: Math.max(320, 200 + series.length * 24) }}><Bar data={data} options={options} role="img" aria-label="Commits por tecnologia e mês. Dados na tabela abaixo." /></div>;
 }

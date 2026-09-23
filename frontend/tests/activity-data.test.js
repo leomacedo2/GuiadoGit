@@ -22,3 +22,16 @@ test('ranks top five on twelve months and preserves them with zeros in six month
   assert.deepEqual(six.series.map(s => s.name), twelve.series.map(s => s.name));
   assert.ok(six.series.every(s => s.counts.length === 6 && s.counts.every(n => n === 0)));
 });
+
+test('classroom top ten retains positions six to ten and the same ranking in six months', () => {
+  const activity = { months: Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, '0')}`),
+    series: Array.from({ length: 12 }, (_, i) => ({ name: i === 8 ? 'TSQL' : `Tech${i}`, counts: [200 - i * 2, ...Array(10).fill(0), i] })) };
+  const before = structuredClone(activity);
+  const twelve = activityWindow(activity, 12, 10), six = activityWindow(activity, 6, 10);
+  assert.equal(twelve.series.length, 10);
+  assert.deepEqual(twelve.series.slice(5).map(s => s.name), ['Tech5', 'Tech6', 'Tech7', 'TSQL', 'Tech9']);
+  // Recent commits have the opposite ranking, but must retain the twelve-month series.
+  assert.deepEqual(six.series.map(s => s.name), twelve.series.map(s => s.name));
+  assert.equal(activityWindow(activity).series.length, 5);
+  assert.deepEqual(activity, before);
+});

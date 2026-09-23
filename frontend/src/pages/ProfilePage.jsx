@@ -57,7 +57,7 @@ export default function ProfilePage({ analysis }) {
     {!analysis.skills.length && <p>Nenhuma skill identificada na cobertura disponível.</p>}
     <Link className="btn btn-outline-primary mb-4" to={route('/skills')}>Ver todas as skills</Link>
     <div className="row g-3 mb-4">
-      <div className="col-12 col-lg-6"><ChartPanel title="Linguagens mais evidenciadas" rows={languageEvidence(analysis.skills)} description="Até oito linguagens, por número de repositórios com sinais. Um repositório pode evidenciar várias linguagens; não são porcentagens de código." /></div>
+      <div className="col-12 col-lg-6"><ChartPanel title="Linguagens mais evidenciadas" technologySelection rows={languageEvidence(analysis.skills, 'all')} description="Linguagens por número de repositórios com sinais. Um repositório pode evidenciar várias linguagens; não são porcentagens de código." /></div>
       <div className="col-12 col-lg-6"><ChartPanel title="Skills por categoria" rows={categoryEvidence(analysis.skills)} description="Repositórios distintos com evidência em cada categoria. Skills do mesmo repositório não duplicam a contagem da categoria." /></div>
     </div>
     <ActivityPanel activity={analysis.commitActivity} />

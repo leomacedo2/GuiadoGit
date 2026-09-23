@@ -11,7 +11,12 @@ public sealed record EvidenceCountDto(string Label, int Count);
 public sealed record ClassroomSummaryDto(Guid Id, string Name, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt,
     int MemberCount, IReadOnlyList<EvidenceCountDto> Technologies);
 public sealed record ClassroomStudentDto(Guid GitHubProfileId, string Username, string? Name, string AvatarUrl,
-    DateTimeOffset AddedAt, DateTimeOffset? AnalyzedAt, bool IsExpired, bool? IsComplete, IReadOnlyList<string> Skills);
+    DateTimeOffset AddedAt, DateTimeOffset? AnalyzedAt, bool IsExpired, bool? IsComplete, IReadOnlyList<string> Skills)
+{
+    public ClassroomStudentDashboardDto Dashboard { get; init; } = new([], [], null);
+}
+public sealed record ClassroomStudentDashboardDto(IReadOnlyList<EvidenceCountDto> Technologies,
+    IReadOnlyList<EvidenceCountDto> Categories, CommitActivityDto? CommitActivity);
 public sealed record ClassroomDashboardDto(Guid Id, string Name, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt,
     IReadOnlyList<ClassroomStudentDto> Members, IReadOnlyList<EvidenceCountDto> Technologies,
     IReadOnlyList<EvidenceCountDto> Categories, CommitActivityDto CommitActivity);

@@ -19,6 +19,11 @@ export default function ClassroomPage({ onOpen }) {
   const [attempt, reload] = useState(0);
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [selectedId, setSelectedId] = useState('');
+  const selectedStudent = classroom?.members.find(student => student.gitHubProfileId === selectedId) ?? null;
+  useEffect(() => {
+    setSelectedId(current => classroom?.members.some(student => student.gitHubProfileId === current) ? current : '');
+  }, [classroom]);
   useEffect(() => {
     let active = true;
     getClassroom(id).then(data => { if (active) setClassroom(data); }).catch(e => {
@@ -52,13 +57,38 @@ export default function ClassroomPage({ onOpen }) {
       {busy && <p role="status">Aguarde…</p>}
       {editing && <ClassroomNameForm initialName={classroom.name} busy={busy} onCancel={() => setEditing(false)} onSave={name => action(() => renameClassroom(id, name))} />}
       {adding && <ClassroomMembersForm existingIds={classroom.members.map(m => m.gitHubProfileId)} busy={busy} onCancel={() => setAdding(false)} onSubmit={(_, ids) => action(() => addClassroomMembers(id, ids))} />}
-      <p className="small text-body-secondary">Cada aluno conta no máximo uma vez por tecnologia ou categoria, independentemente do número de repositórios. Evidência não representa proficiência. Abrir a turma não atualiza análises.</p>
-      {classroom.members.some(m => !m.analyzedAt || m.isComplete === false) && <p className="alert alert-warning">Há alunos sem snapshot ou com cobertura parcial. Os gráficos consideram somente as evidências disponíveis.</p>}
-      <div className="row g-3 mb-4">
-        <div className="col-12 col-lg-6"><ChartPanel title="Tecnologias mais presentes na turma" rows={classroom.technologies.slice(0, 10)} unit="Alunos" description="Até dez tecnologias, por número de alunos com evidência. React em sete repositórios do mesmo aluno conta como um aluno." /></div>
-        <div className="col-12 col-lg-6"><ChartPanel title="Categorias da turma" rows={classroom.categories} unit="Alunos" description="Alunos com pelo menos uma skill na categoria. São utilizadas apenas categorias encontradas nos snapshots." /></div>
+      <div className="row align-items-end g-2 mb-3">
+        <div className="col-12 col-md-6"><h2 className="h4 mb-0">Dashboard da turma</h2></div>
+        <div className="col-12 col-md-6"><label htmlFor="dashboard-student" className="form-label">Visualizar:</label>
+          <select id="dashboard-student" className="form-select" value={selectedStudent?.gitHubProfileId ?? ''} onChange={event => setSelectedId(event.target.value)}>
+            <option value="">Todos os alunos</option>
+            {classroom.members.map(student => <option key={student.gitHubProfileId} value={student.gitHubProfileId}>{student.name || student.username} (@{student.username})</option>)}
+          </select></div>
       </div>
-      <ActivityPanel activity={classroom.commitActivity} classroom />
+      {selectedStudent && <section className="card mb-3" aria-label="Resumo do aluno selecionado"><div className="card-body">
+        <div className="d-flex align-items-center gap-3 mb-2">
+          <img src={selectedStudent.avatarUrl} width="56" height="56" className="rounded-circle flex-shrink-0" alt="" />
+          <div className="profile-details text-break"><h3 className="h5 mb-1">{selectedStudent.name || selectedStudent.username}</h3><span className="text-body-secondary">@{selectedStudent.username}</span></div>
+        </div>
+        <p className="small mb-2">{selectedStudent.analyzedAt
+          ? `Última análise: ${new Date(selectedStudent.analyzedAt).toLocaleString('pt-BR')} · ${selectedStudent.isComplete ? 'Sem cortes nas regras de inspeção.' : 'Cobertura parcial.'}`
+          : 'Sem análise disponível.'}</p>
+        <div className="d-flex flex-wrap gap-2 mb-3">{selectedStudent.skills.map(skill => <span className="badge text-bg-secondary text-wrap" key={skill}>{skill}</span>)}</div>
+        <button className="btn btn-outline-primary" disabled={busy || !selectedStudent.analyzedAt} onClick={() => action(async () => onOpen(await openSavedAnalysis(selectedStudent.gitHubProfileId)))}>Ver perfil completo</button>
+      </div></section>}
+      <p className="small text-body-secondary">{selectedStudent
+        ? 'Tecnologias e categorias mostram repositórios com evidência deste aluno. Um repositório conta uma vez em cada categoria. Evidência não representa proficiência.'
+        : 'Cada aluno conta no máximo uma vez por tecnologia ou categoria, independentemente do número de repositórios. Evidência não representa proficiência. Abrir a turma não atualiza análises.'}</p>
+      {!selectedStudent && classroom.members.some(m => !m.analyzedAt || m.isComplete === false) && <p className="alert alert-warning">Há alunos sem snapshot ou com cobertura parcial. Os gráficos consideram somente as evidências disponíveis.</p>}
+      <div className="row g-3 mb-4">
+        <div className="col-12 col-lg-6"><ChartPanel title={selectedStudent ? 'Tecnologias do aluno' : 'Tecnologias mais presentes na turma'}
+          technologySelection rows={selectedStudent ? selectedStudent.dashboard?.technologies ?? [] : classroom.technologies} unit={selectedStudent ? 'Repositórios' : 'Alunos'}
+          description={selectedStudent ? 'Tecnologias, por número de repositórios com evidência no snapshot do aluno.' : 'Tecnologias, por número de alunos com evidência. React em sete repositórios do mesmo aluno conta como um aluno.'} /></div>
+        <div className="col-12 col-lg-6"><ChartPanel title={selectedStudent ? 'Categorias do aluno' : 'Categorias da turma'}
+          rows={selectedStudent ? selectedStudent.dashboard?.categories ?? [] : classroom.categories} unit={selectedStudent ? 'Repositórios' : 'Alunos'}
+          description={selectedStudent ? 'Repositórios distintos com evidência em cada categoria do aluno.' : 'Alunos com pelo menos uma skill na categoria. São utilizadas apenas categorias encontradas nos snapshots.'} /></div>
+      </div>
+      <ActivityPanel activity={selectedStudent ? selectedStudent.dashboard?.commitActivity : classroom.commitActivity} classroom={!selectedStudent} />
       <h2 className="h4" id="classroom-students">Alunos da turma</h2>
       {classroom.members.length === 1 && <p className="small text-body-secondary">A turma precisa manter um aluno. Para remover o último, adicione outro ou exclua a turma.</p>}
       <div className="row g-3">{classroom.members.map(student => <div className="col-12 col-lg-6" key={student.gitHubProfileId}>

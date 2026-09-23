@@ -182,6 +182,30 @@ public sealed class ClassroomTests(PersistenceFixture fixture) : IClassFixture<P
     }
 
     [Fact]
+    public async Task DashboardIncludesDistinctIndividualEvidenceAndPersistedCommitsWithoutCollecting()
+    {
+        using var client = await Account();
+        var first = await Seed(client, "Ana", repositories: 7, expired: true);
+        var second = await Seed(client, "Bruno", repositories: 1, pushed: false);
+        var id = await Create(client, "Segmentação", first.ProfileId, second.ProfileId);
+        var calls = fixture.GitHub.RequestCount;
+        var result = (await Dashboard(client, id))!;
+        var ana = result.Members.Single(m => m.GitHubProfileId == first.ProfileId).Dashboard;
+        var bruno = result.Members.Single(m => m.GitHubProfileId == second.ProfileId).Dashboard;
+        Assert.Equal(7, ana.Technologies.Single(t => t.Label == "React").Count);
+        Assert.Equal(1, bruno.Technologies.Single(t => t.Label == "React").Count);
+        // JavaScript and TypeScript share repositories: category counts must not sum both skills.
+        Assert.Equal(7, ana.Categories.Single(t => t.Label == "Linguagens").Count);
+        Assert.Equal(1, bruno.Categories.Single(t => t.Label == "Linguagens").Count);
+        Assert.Equal(70, ana.CommitActivity!.Series.Single(s => s.Name == "React").Counts.Sum(n => n ?? 0));
+        Assert.Null(bruno.CommitActivity);
+        Assert.Equal(2, result.Technologies.Single(t => t.Label == "React").Count);
+        Assert.Equal(2, result.Categories.Single(t => t.Label == "Linguagens").Count);
+        Assert.Equal(1, result.CommitActivity.MissingStudents);
+        Assert.Equal(calls, fixture.GitHub.RequestCount);
+    }
+
+    [Fact]
     public async Task MissingSnapshotAndOldSnapshotsWithoutPushRemainUsable()
     {
         using var client = await Account(); var old = await Seed(client, pushed: false); var missing = await Seed(client);
@@ -193,6 +217,10 @@ public sealed class ClassroomTests(PersistenceFixture fixture) : IClassFixture<P
         Assert.Equal(1, result.Technologies.Single(t => t.Label == "React").Count);
         Assert.Equal(2, result.CommitActivity.MissingStudents);
         Assert.Empty(result.CommitActivity.Series);
+        var unavailable = result.Members.Single(m => m.GitHubProfileId == missing.ProfileId).Dashboard;
+        Assert.Empty(unavailable.Technologies);
+        Assert.Empty(unavailable.Categories);
+        Assert.Null(unavailable.CommitActivity);
     }
 
     [Fact]

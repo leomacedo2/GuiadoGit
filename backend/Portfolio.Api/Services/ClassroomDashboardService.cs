@@ -37,12 +37,24 @@ public sealed class ClassroomDashboardService(PortfolioDbContext db, TimeProvide
                 lookup.TryGetValue(m.GitHubProfileId, out var snapshot);
                 return new ClassroomStudentDto(m.GitHubProfileId, m.Username, m.Nome, m.AvatarUrl, m.AddedAt,
                     snapshot?.AnalyzedAt, snapshot is not null && snapshot.ExpiresAt <= clock.GetUtcNow(), snapshot?.IsComplete,
-                    snapshot?.Skills.Take(4).Select(s => s.Name).ToList() ?? []);
+                    snapshot?.Skills.Take(4).Select(s => s.Name).ToList() ?? [])
+                { Dashboard = StudentDashboard(snapshot) };
             }).ToList();
-        var activity = members.Select(member => (member.GitHubProfileId,
-            lookup.TryGetValue(member.GitHubProfileId, out var snapshot) ? CommitActivityAggregation.ReadMetadata(snapshot.MetadataJson) : null));
+        var activity = students.Select(student => (student.GitHubProfileId, student.Dashboard.CommitActivity));
         return new(classroom.Id, classroom.Name, classroom.CreatedAt, classroom.UpdatedAt, students,
             Counts(snapshots, false), Counts(snapshots, true), CommitActivityAggregation.ForClassroom(activity, clock.GetUtcNow()));
+    }
+
+    private static ClassroomStudentDashboardDto StudentDashboard(Snapshot? snapshot)
+    {
+        if (snapshot is null) return new([], [], null);
+        var technologies = snapshot.Skills.Where(s => s.RepositoryCount > 0)
+            .Select(s => new EvidenceCountDto(s.Name, s.RepositoryCount))
+            .OrderByDescending(s => s.Count).ThenBy(s => s.Label, StringComparer.OrdinalIgnoreCase).ToList();
+        var categories = snapshot.Skills.GroupBy(s => s.Category, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new EvidenceCountDto(g.Key, g.SelectMany(s => s.RepositoryIds).Distinct().Count()))
+            .Where(c => c.Count > 0).OrderByDescending(c => c.Count).ThenBy(c => c.Label, StringComparer.OrdinalIgnoreCase).ToList();
+        return new(technologies, categories, CommitActivityAggregation.ReadMetadata(snapshot.MetadataJson));
     }
 
     private static IReadOnlyList<EvidenceCountDto> Counts(IEnumerable<Snapshot> snapshots, bool categories) => snapshots
@@ -60,10 +72,11 @@ public sealed class ClassroomDashboardService(PortfolioDbContext db, TimeProvide
         // Class lists do not need metadata. Details read the persisted commit aggregate, never GitHub.
         return await db.Analyses.AsNoTracking().AsSplitQuery().Where(a => latestIds.Contains(a.Id))
             .Select(a => new Snapshot(a.GitHubProfileId, a.AnalyzedAt, a.ExpiresAt, a.IsComplete,
-                a.Skills.OrderBy(s => s.Position).Select(s => new SnapshotSkill(s.Name, s.Category, s.RepositoryCount)).ToList(),
+                a.Skills.OrderBy(s => s.Position).Select(s => new SnapshotSkill(s.Name, s.Category, s.RepositoryCount,
+                    s.Evidence.Where(e => detail).Select(e => e.RepositoryId).Distinct().ToList())).ToList(),
                 detail ? a.MetadataJson : "{}")).ToListAsync(ct);
     }
     private sealed record Snapshot(Guid ProfileId, DateTimeOffset AnalyzedAt, DateTimeOffset ExpiresAt, bool IsComplete,
         List<SnapshotSkill> Skills, string MetadataJson);
-    private sealed record SnapshotSkill(string Name, string Category, int RepositoryCount);
+    private sealed record SnapshotSkill(string Name, string Category, int RepositoryCount, List<long> RepositoryIds);
 }

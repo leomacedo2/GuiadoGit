@@ -31,7 +31,7 @@ export default function AnalysisResultPage({ view }) {
     {view !== 'profile' && <p className="small text-body-secondary">Análise de <Link to={profilePath(username)}>@{username}</Link> · {analysis.analyzedAt && new Date(analysis.analyzedAt).toLocaleString('pt-BR')}</p>}
     {view !== 'profile' && analysis.isPartial && <p className="alert alert-warning">Cobertura parcial: estes dados refletem as evidências disponíveis. <Link to={profilePath(username)}>Ver limites no perfil</Link>.</p>}
     {view === 'profile' && <ProfilePage key={username} analysis={analysis} />}
-    {view === 'skills' && <SkillsPage skills={analysis.skills} />}
+    {view === 'skills' && <SkillsPage key={username} skills={analysis.skills} />}
     {view === 'recommendations' && <RecommendationsPage analysis={analysis} />}
     {view === 'repositories' && <RepositoriesPage portfolio={analysis.profile} />}
     {view !== 'profile' && <Link className="btn btn-outline-secondary mt-4" to={resultPath('/repositorios', username)}>Repositórios deste perfil</Link>}
