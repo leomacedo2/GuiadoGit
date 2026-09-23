@@ -8,7 +8,9 @@ Integração real entre React → ASP.NET Core Web API (.NET 8) → GitHub REST 
 
 Veja o [relatório de refinamento e checklist de validação](docs/refinamento.md): até 16 manifestos relevantes por repositório, sem aumentar o orçamento global; até três trilhas contextuais e gráficos com contagens reais. Snapshots anteriores continuam legíveis e só recebem as novas regras em uma nova coleta.
 
-Inclui PostgreSQL com EF Core 8, contas da plataforma, cache compartilhado por seis horas e `/minhas-analises`. Uma conta autenticada pode conectar opcionalmente seu GitHub em `/github`, após habilitação segura pelo administrador: veja [configuração OAuth e proteção dos tokens](docs/github-autenticacao.md). Isso não substitui cadastro/login da plataforma. O Supabase é usado como PostgreSQL. Não há vagas, turmas ou IA.
+Inclui PostgreSQL com EF Core 8, contas da plataforma, cache compartilhado por seis horas e `/minhas-analises`. Uma conta autenticada pode conectar opcionalmente seu GitHub em `/github`, após habilitação segura pelo administrador: veja [configuração OAuth e proteção dos tokens](docs/github-autenticacao.md). Isso não substitui cadastro/login da plataforma. O Supabase é usado como PostgreSQL. Não há vagas ou IA.
+
+**Turmas:** qualquer conta pode organizar seus perfis salvos em `/turmas`, sem roles adicionais. Os dashboards leem snapshots, sem consultar GitHub. Perfil individual e turma incluem [commits por tecnologia](docs/commits.md), persistidos no snapshot e coletados com orçamento separado. Snapshots antigos não são atualizados automaticamente. **Antes de iniciar/deployar esta versão, aplique manualmente a migration aditiva de Turmas**, conforme [docs/turmas.md](docs/turmas.md). Se a migration de Turmas já estiver aplicada, a atualização do gráfico de commits não exige outra migration.
 
 **Comece pelo [guia de persistência e Supabase](docs/persistencia.md)** para criar/configurar o banco, aplicar a migration inicial e testar cadastro, login e análises salvas. Sem banco configurado, a consulta pública continua disponível, mas cache e contas ficam indisponíveis.
 

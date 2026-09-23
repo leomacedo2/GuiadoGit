@@ -23,7 +23,7 @@ public static class AnalysisSnapshot
             Repositories = dto.Profile.Repositories.Select((r, i) => new RepositoryAnalysis
             {
                 RepositoryId = r.Id, Position = i, Name = r.Name, Description = r.Description,
-                Language = r.Language, Url = r.Url, UpdatedAt = r.UpdatedAt.ToUniversalTime()
+                Language = r.Language, Url = r.Url, UpdatedAt = r.UpdatedAt.ToUniversalTime(), PushedAt = r.PushedAt?.ToUniversalTime()
             }).ToList(),
             Skills = dto.Skills.Select((s, i) => new SkillAnalysis
             {
@@ -53,7 +53,7 @@ public static class AnalysisSnapshot
             Id = snapshot.Id, AnalyzedAt = snapshot.AnalyzedAt, ExpiresAt = snapshot.ExpiresAt,
             Source = source, CurrentGitHubRequests = source == "github" ? metadata.TotalGitHubRequests : 0,
             Profile = metadata.Profile with { Repositories = snapshot.Repositories.OrderBy(r => r.Position)
-                .Select(r => new RepositoryDto(r.RepositoryId, r.Name, r.Description, r.Language, r.Url, r.UpdatedAt)).ToList() },
+                .Select(r => new RepositoryDto(r.RepositoryId, r.Name, r.Description, r.Language, r.Url, r.UpdatedAt) { PushedAt = r.PushedAt }).ToList() },
             Skills = skills,
             Recommendations = snapshot.Recommendations.OrderBy(r => r.Position).Select(r => new RecommendationDto(r.Topic, r.Reason, r.NextStep)
             {

@@ -14,4 +14,9 @@ public sealed record GitHubUser(
 public sealed record GitHubRepository(
     long Id, string Name, string? Description, string? Language,
     [property: JsonPropertyName("html_url")] string HtmlUrl,
-    [property: JsonPropertyName("updated_at")] DateTimeOffset UpdatedAt);
+    [property: JsonPropertyName("updated_at")] DateTimeOffset UpdatedAt)
+{
+    [JsonPropertyName("pushed_at")] public DateTimeOffset? PushedAt { get; init; }
+    [JsonPropertyName("fork")] public bool IsFork { get; init; }
+    [JsonPropertyName("archived")] public bool IsArchived { get; init; }
+}

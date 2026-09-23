@@ -11,7 +11,7 @@ let accessToken = null;
 export function setAccessToken(value) { accessToken = value; }
 api.interceptors.request.use(config => {
   if (accessToken && (config.url.startsWith('/api/me/') || config.url === '/api/auth/me'
-    || config.url.startsWith('/api/analyses/') || config.url.startsWith('/api/github/'))) {
+    || config.url.startsWith('/api/analyses/') || config.url.startsWith('/api/github/') || config.url.startsWith('/api/classes'))) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
   return config;
@@ -56,6 +56,13 @@ export async function getSavedProfiles() { return (await api.get('/api/me/profil
 export async function saveProfile(id) { await api.put(`/api/me/profiles/${id}`); }
 export async function removeProfile(id) { await api.delete(`/api/me/profiles/${id}`); }
 export async function openSavedAnalysis(id) { return (await api.get(`/api/me/profiles/${id}/analysis`)).data; }
+export async function getClassrooms() { return (await api.get('/api/classes')).data; }
+export async function getClassroom(id) { return (await api.get(`/api/classes/${encodeURIComponent(id)}`)).data; }
+export async function createClassroom(name, profileIds) { return (await api.post('/api/classes', { name, profileIds })).data; }
+export async function renameClassroom(id, name) { await api.put(`/api/classes/${encodeURIComponent(id)}`, { name }); }
+export async function deleteClassroom(id) { await api.delete(`/api/classes/${encodeURIComponent(id)}`); }
+export async function addClassroomMembers(id, profileIds) { await api.post(`/api/classes/${encodeURIComponent(id)}/members`, { profileIds }); }
+export async function removeClassroomMember(id, profileId) { await api.delete(`/api/classes/${encodeURIComponent(id)}/members/${encodeURIComponent(profileId)}`); }
 
 export async function getPortfolio(username) {
   const { data } = await api.get(`/api/github/profile/${encodeURIComponent(username)}`);

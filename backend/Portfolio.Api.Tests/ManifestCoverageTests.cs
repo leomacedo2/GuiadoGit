@@ -167,6 +167,7 @@ public sealed class ManifestCoverageTests
 
     private sealed class Fixture : IGitHubService
     {
+        public Task<GitHubCommitPage> GetCommitsAsync(string owner, string repository, string author, DateTimeOffset since, DateTimeOffset until, int page, CancellationToken ct) => throw new InvalidOperationException("Unexpected commit collection in skills fixture.");
         public List<GitHubTreeEntry> Paths { get; } = [];
         private Dictionary<string, string> Contents { get; } = [];
         public List<string> Blobs { get; } = [];

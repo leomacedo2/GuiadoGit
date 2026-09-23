@@ -49,6 +49,7 @@ public sealed class RepositoryAnalysis
     public string? Language { get; set; }
     public string Url { get; set; } = "";
     public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? PushedAt { get; set; }
 }
 
 public sealed class SkillAnalysis

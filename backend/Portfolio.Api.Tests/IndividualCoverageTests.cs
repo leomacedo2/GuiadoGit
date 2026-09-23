@@ -56,6 +56,7 @@ public sealed class IndividualCoverageTests
 
     private sealed class Fixture : IGitHubService
     {
+        public Task<GitHubCommitPage> GetCommitsAsync(string owner, string repository, string author, DateTimeOffset since, DateTimeOffset until, int page, CancellationToken ct) => throw new InvalidOperationException("Unexpected commit collection in skills fixture.");
         public int BlobCalls { get; private set; }
         public Task<PortfolioDto> GetPortfolioAsync(string username, CancellationToken ct) => Task.FromResult(new PortfolioDto("test", null, null, "", "", 25,
             Enumerable.Range(1, 25).Select(id => new RepositoryDto(id, $"repo{id}", null, "Python", "", DateTimeOffset.UtcNow.AddDays(-id))).ToList()));

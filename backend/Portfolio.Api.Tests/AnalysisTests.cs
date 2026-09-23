@@ -115,6 +115,7 @@ public sealed class AnalysisTests
 
     private sealed class FakeGitHub(int count) : IGitHubService
     {
+        public Task<GitHubCommitPage> GetCommitsAsync(string owner, string repository, string author, DateTimeOffset since, DateTimeOffset until, int page, CancellationToken ct) => throw new InvalidOperationException("Unexpected commit collection in skills fixture.");
         public int Calls { get; private set; }
         public bool WithManifests { get; init; }
         public bool FailBlob { get; init; }

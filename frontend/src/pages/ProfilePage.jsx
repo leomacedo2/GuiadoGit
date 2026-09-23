@@ -7,6 +7,7 @@ import { errorMessage, saveProfile } from '../services/api';
 import ProfileCard from '../components/ProfileCard';
 import ChartPanel from '../components/ChartPanel';
 import SkillCard from '../components/SkillCard';
+import ActivityPanel from '../components/ActivityPanel';
 
 export default function ProfilePage({ analysis }) {
   const { user } = useAuth();
@@ -59,6 +60,7 @@ export default function ProfilePage({ analysis }) {
       <div className="col-12 col-lg-6"><ChartPanel title="Linguagens mais evidenciadas" rows={languageEvidence(analysis.skills)} description="Até oito linguagens, por número de repositórios com sinais. Um repositório pode evidenciar várias linguagens; não são porcentagens de código." /></div>
       <div className="col-12 col-lg-6"><ChartPanel title="Skills por categoria" rows={categoryEvidence(analysis.skills)} description="Repositórios distintos com evidência em cada categoria. Skills do mesmo repositório não duplicam a contagem da categoria." /></div>
     </div>
+    <ActivityPanel activity={analysis.commitActivity} />
     <h2 className="h4">Trilhas sugeridas</h2>
     {analysis.learningTracks?.length ? <div className="row g-3 mb-3">{analysis.learningTracks.map(track => <div className="col-12 col-lg-4" key={track.name}><article className="card h-100"><div className="card-body">
       <p className="small text-primary-emphasis mb-1">{track.area}</p><h3 className="h5">{track.name}</h3>

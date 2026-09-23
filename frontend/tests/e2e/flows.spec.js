@@ -166,3 +166,13 @@ test('username inválido não consulta API e página vazia oferece análise', as
   expect(calls.filter(c => c.path.startsWith('/api/analyses/'))).toHaveLength(0);
 });
 
+
+test('snapshot legado não usa pushed_at como histórico nem força atualização', async ({ page }) => {
+  const calls = await mockApi(page, true);
+  await login(page);
+  await page.getByRole('button', { name: 'Ver perfil', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Commits por tecnologia', exact: true });
+  await expect(panel.getByText('Este snapshot ainda não possui histórico de commits. Atualize a análise pelo GitHub para gerar esse gráfico.')).toBeVisible();
+  await expect(panel.locator('canvas')).toHaveCount(0);
+  expect(calls.filter(c => c.path.startsWith('/api/analyses/'))).toHaveLength(0);
+});

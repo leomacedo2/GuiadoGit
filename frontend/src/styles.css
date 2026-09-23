@@ -14,5 +14,7 @@ summary { cursor: pointer; }
 .table th, .table td { overflow-wrap: anywhere; }
 .avatar { object-fit: cover; flex-shrink: 0; }
 .profile-details { min-width: 0; }
+.member-picker { max-height: 420px; overflow-y: auto; }
+.member-choice { cursor: pointer; }
 .bio { white-space: pre-line; overflow-wrap: anywhere; }
 .repository-card { border-color: var(--bs-border-color); border-radius: 12px; }

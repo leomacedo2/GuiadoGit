@@ -24,7 +24,9 @@ Todas as tabelas ficam no schema `portfolio`, separado de `public` e do schema `
 
 Um perfil possui vários snapshots; cada snapshot possui suas coleções ordenadas. As recomendações reutilizam as evidências das skills do mesmo snapshot. Os metadados não duplicam as coleções. A criação do grafo é transacional. Uma falha não substitui pela metade o resultado anterior. Perfil/skills antigos não são misturados com repositórios de uma coleta nova.
 
-A lista pessoal acompanha a **última análise compartilhada do perfil**, não congela uma versão específica para cada usuário. Remover da lista apaga somente o vínculo; snapshots, perfil e vínculos de outras contas permanecem.
+A lista pessoal acompanha a **última análise compartilhada do perfil**, não congela uma versão específica para cada usuário. Remover da lista apaga somente o vínculo; snapshots, perfil e vínculos de outras contas permanecem. Com o [módulo de Turmas](turmas.md), a remoção é bloqueada (409) enquanto o perfil estiver em turmas da própria conta; a mensagem identifica essas turmas. Remova os vínculos das turmas primeiro. FKs compostas também impedem associações de outra conta e remoções concorrentes inseguras.
+
+A migration aditiva de Turmas cria Classroom/ClassroomMember e acrescenta `RepositoryAnalysis.PushedAt` nullable. Snapshots existentes mantêm null, sem presumir que updated_at equivale a um push. Os comandos atuais estão em [turmas.md](turmas.md); as instruções de migration inicial abaixo registram a configuração original.
 
 ## Autenticação
 
@@ -187,3 +189,5 @@ Limites: coordenação de coletas apenas dentro de uma instância da API; snapsh
 - `backend/Portfolio.Api.Tests/Portfolio.Api.Tests.csproj`, `PersistenceTests.cs`, `VisitorWithoutDatabaseTests.cs`
 - `frontend/src/auth/AuthContext.jsx`, `pages/AuthPage.jsx`, `pages/SavedAnalysesPage.jsx`, `services/api.js`, `App.jsx`, `main.jsx`
 - `README.md`, `docs/persistencia.md`
+
+O agregado mensal `commitActivity` é persistido no MetadataJson existente, sem nova migration e sem commits individuais. Cache fresco legado continua válido. Consulte [commits.md](commits.md) para cobertura e regras do gráfico.

@@ -27,4 +27,6 @@ public sealed record AnalysisDto(PortfolioDto Profile, int AnalyzedRepositories,
     public int ManifestSafetyLimit { get; init; }
     public int AnalysisVersion { get; init; }
     public IReadOnlyList<LearningTrackDto> LearningTracks { get; init; } = [];
+    public RecentActivityDto? RecentActivity { get; init; }
+    public CommitActivityDto? CommitActivity { get; init; }
 }

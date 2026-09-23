@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Portfolio.Api.Data;
 using Portfolio.Api.Services;
+using Npgsql;
 
 namespace Portfolio.Api.Controllers;
 
@@ -48,13 +49,25 @@ public sealed class SavedProfilesController(PortfolioDbContext db, PersistentAna
         if (!await db.UserSavedProfiles.AnyAsync(s => s.UserId == UserId && s.GitHubProfileId == profileId, ct)) return NotFound();
         var snapshot = await persistence.Snapshots.Where(a => a.GitHubProfileId == profileId)
             .OrderByDescending(a => a.AnalyzedAt).FirstOrDefaultAsync(ct);
-        return snapshot is null ? NotFound() : Ok(AnalysisSnapshot.Read(snapshot));
+        if (snapshot is null) return NotFound();
+        var result = AnalysisSnapshot.Read(snapshot);
+        return Ok(result);
     }
 
     [HttpDelete("{profileId:guid}")]
     public async Task<IActionResult> Remove(Guid profileId, CancellationToken ct)
     {
-        await db.UserSavedProfiles.Where(s => s.UserId == UserId && s.GitHubProfileId == profileId).ExecuteDeleteAsync(ct);
+        var names = await UsedByClasses(profileId, ct);
+        if (names.Count > 0) return InUse(names);
+        try { await db.UserSavedProfiles.Where(s => s.UserId == UserId && s.GitHubProfileId == profileId).ExecuteDeleteAsync(ct); }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation && ex.ConstraintName == "FK_ClassroomMembers_UserSavedProfiles")
+        { return InUse(await UsedByClasses(profileId, ct)); }
         return NoContent();
     }
+
+    private Task<List<string>> UsedByClasses(Guid profileId, CancellationToken ct) => db.ClassroomMembers
+        .Where(m => m.ApplicationUserId == UserId && m.GitHubProfileId == profileId)
+        .Select(m => m.Classroom.Name).Distinct().OrderBy(name => name).ToListAsync(ct);
+    private IActionResult InUse(List<string> names) => Problem(statusCode: 409,
+        detail: $"Remova primeiro o perfil das turmas que o utilizam: {string.Join(", ", names)}. O perfil e suas análises foram preservados.");
 }

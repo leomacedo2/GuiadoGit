@@ -7,8 +7,11 @@ import AnalyzePage from './pages/AnalyzePage';
 import AnalysisResultPage from './pages/AnalysisResultPage';
 import SavedAnalysesPage from './pages/SavedAnalysesPage';
 import GitHubConnectionPage from './pages/GitHubConnectionPage';
+import ClassroomsPage from './pages/ClassroomsPage';
+import ClassroomPage from './pages/ClassroomPage';
 
 export default function App() { return <AnalysisProvider><AppContent /></AnalysisProvider>; }
+function RequireAccount({ children }) { return useAuth().user ? children : <Navigate to="/" replace />; }
 function AppContent() {
   const { user, logout } = useAuth();
   const { activeUsername, remember, select } = useAnalysis();
@@ -27,6 +30,7 @@ function AppContent() {
   }
   const links = [
     ...(user ? [['/minhas-analises', 'Minhas análises']] : []), ['/analisar', 'Analisar perfil'],
+    ...(user ? [['/turmas', 'Turmas']] : []),
     ...(activeUsername ? [[profilePath(activeUsername), 'Perfil']] : []),
     [resultPath('/skills', activeUsername), 'Skills'], [resultPath('/recomendacoes', activeUsername), 'Recomendações'],
     [resultPath('/repositorios', activeUsername), 'Repositórios'], ...(user ? [['/github', 'Conexão GitHub']] : [])
@@ -63,6 +67,8 @@ function AppContent() {
         <Route path="/repositorios" element={<AnalysisResultPage view="repositories" />} />
         <Route path="/minhas-analises" element={<SavedAnalysesPage key={user?.id || 'visitor'} onOpen={openAnalysis} />} />
         <Route path="/github" element={<GitHubConnectionPage key={user?.id || 'visitor'} />} />
+        <Route path="/turmas" element={<RequireAccount><ClassroomsPage key={user?.id} /></RequireAccount>} />
+        <Route path="/turmas/:id" element={<RequireAccount><ClassroomPage key={`${user?.id}-${location.pathname}`} onOpen={openAnalysis} /></RequireAccount>} />
         <Route path="*" element={<div className="alert alert-secondary">Página não encontrada. <Link to="/analisar">Analisar um perfil</Link></div>} />
       </Routes>
     </main>

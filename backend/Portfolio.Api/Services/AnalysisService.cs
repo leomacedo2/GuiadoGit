@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 namespace Portfolio.Api.Services;
 
 public sealed class AnalysisService(IGitHubService gitHub, SkillDetector detector, RecommendationService recommendations,
-    IOptions<IndividualAnalysisOptions>? options = null)
+    IOptions<IndividualAnalysisOptions>? options = null, TimeProvider? clock = null)
 {
     public int GitHubRequestCount => gitHub.RequestCount;
     private readonly IndividualAnalysisOptions limits = options?.Value ?? new();
@@ -15,6 +15,7 @@ public sealed class AnalysisService(IGitHubService gitHub, SkillDetector detecto
     public async Task<AnalysisDto> AnalyzeAsync(string username, CancellationToken cancellationToken)
     {
         var initialRequests = gitHub.RequestCount;
+        var now = (clock ?? TimeProvider.System).GetUtcNow();
         var profile = await gitHub.GetPortfolioAsync(username, cancellationToken);
         var blobCache = new Dictionary<string, string>(StringComparer.Ordinal);
         var completed = 0;
@@ -87,6 +88,7 @@ public sealed class AnalysisService(IGitHubService gitHub, SkillDetector detecto
             return new SkillDto(group.Key.Name, group.Key.Category, level, count, group.Select(x => x.Evidence).Distinct().ToList());
         }).OrderByDescending(s => s.RepositoryCount).ThenBy(s => s.Name).ToList();
         var tracks = recommendations.BuildTracks(skills);
+        var commits = await new CommitHistoryService(gitHub, limits).CollectAsync(profile, skills, now, deadline.Token, cancellationToken);
         return new(profile, profile.Repositories.Count, inspected, requests, warnings.Count > 0,
             warnings.Distinct().ToList(), skills, recommendations.Priorities(tracks, skills))
         {
@@ -96,7 +98,8 @@ public sealed class AnalysisService(IGitHubService gitHub, SkillDetector detecto
             RequestSafetyLimit = limits.MaxRequests,
             ManifestSafetyLimit = limits.MaxManifestsPerRepository,
             AnalysisVersion = 2,
-            LearningTracks = tracks
+            LearningTracks = tracks,
+            CommitActivity = commits
         };
     }
 }

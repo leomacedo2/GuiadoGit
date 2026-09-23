@@ -13,6 +13,8 @@ public sealed class PortfolioDbContext(DbContextOptions<PortfolioDbContext> opti
     public DbSet<GitHubProfile> GitHubProfiles => Set<GitHubProfile>();
     public DbSet<Analysis> Analyses => Set<Analysis>();
     public DbSet<UserSavedProfile> UserSavedProfiles => Set<UserSavedProfile>();
+    public DbSet<Classroom> Classrooms => Set<Classroom>();
+    public DbSet<ClassroomMember> ClassroomMembers => Set<ClassroomMember>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -44,5 +46,18 @@ public sealed class PortfolioDbContext(DbContextOptions<PortfolioDbContext> opti
         model.Entity<UserSavedProfile>().HasKey(x => new { x.UserId, x.GitHubProfileId });
         model.Entity<UserSavedProfile>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
         model.Entity<UserSavedProfile>().HasOne(x => x.GitHubProfile).WithMany().HasForeignKey(x => x.GitHubProfileId);
+        model.Entity<Classroom>().Property(x => x.Name).HasMaxLength(100).IsRequired();
+        model.Entity<Classroom>().ToTable(t => t.HasCheckConstraint("CK_Classrooms_Name", "char_length(btrim(\"Name\")) BETWEEN 2 AND 100"));
+        model.Entity<Classroom>().HasAlternateKey(x => new { x.Id, x.ApplicationUserId });
+        model.Entity<Classroom>().HasIndex(x => new { x.ApplicationUserId, x.UpdatedAt });
+        model.Entity<Classroom>().HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.ApplicationUserId).OnDelete(DeleteBehavior.Cascade);
+        model.Entity<ClassroomMember>().HasKey(x => new { x.ClassroomId, x.GitHubProfileId });
+        model.Entity<ClassroomMember>().HasOne(x => x.Classroom).WithMany(x => x.Members)
+            .HasForeignKey(x => new { x.ClassroomId, x.ApplicationUserId })
+            .HasPrincipalKey(x => new { x.Id, x.ApplicationUserId }).OnDelete(DeleteBehavior.Cascade);
+        model.Entity<ClassroomMember>().HasOne(x => x.SavedProfile).WithMany()
+            .HasForeignKey(x => new { x.ApplicationUserId, x.GitHubProfileId })
+            .HasPrincipalKey(x => new { x.UserId, x.GitHubProfileId }).OnDelete(DeleteBehavior.NoAction)
+            .HasConstraintName("FK_ClassroomMembers_UserSavedProfiles");
     }
 }

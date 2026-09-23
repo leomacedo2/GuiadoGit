@@ -43,6 +43,14 @@ public sealed class PersistenceFixture : WebApplicationFactory<Program>, IAsyncL
 
 public sealed class FakePersistentGitHub : IGitHubService
 {
+    public ConcurrentDictionary<string, int> CommitCalls { get; } = new();
+    public Task<GitHubCommitPage> GetCommitsAsync(string owner, string repository, string author, DateTimeOffset since, DateTimeOffset until, int page, CancellationToken ct)
+    {
+        if (!owner.StartsWith("commits")) throw new InvalidOperationException("Unexpected commit collection in legacy snapshot fixture.");
+        Interlocked.Increment(ref count);
+        CommitCalls.AddOrUpdate(owner, 1, (_, previous) => previous + 1);
+        return Task.FromResult(new GitHubCommitPage([new("test-only-sha", new(new(until.AddMinutes(-1))))], false));
+    }
     private int count;
     private long nextId;
     public int RequestCount => count;
@@ -59,7 +67,8 @@ public sealed class FakePersistentGitHub : IGitHubService
         var id = Ids.GetOrAdd(username, _ => Interlocked.Increment(ref nextId));
         return new(username, "Perfil de teste", "Bio de teste", "https://example.com/avatar.png",
             $"https://github.com/{username}", 1,
-            [new(id, "demo", "Descrição completa", "Python", $"https://github.com/{username}/demo", DateTimeOffset.Parse("2026-09-17T12:00:00Z"))]) { GitHubId = id };
+            [new(id, "demo", "Descrição completa", "Python", $"https://github.com/{username}/demo", DateTimeOffset.Parse("2026-09-17T12:00:00Z"))
+                { PushedAt = username.StartsWith("commits") ? DateTimeOffset.UtcNow.AddDays(-1) : null }]) { GitHubId = id };
     }
     public Task<GitHubTree> GetTreeAsync(string username, string repository, CancellationToken ct)
     {
@@ -72,6 +81,31 @@ public sealed class FakePersistentGitHub : IGitHubService
 
 public sealed class PersistenceTests(PersistenceFixture fixture) : IClassFixture<PersistenceFixture>
 {
+    [Fact]
+    public async Task CommitHistoryIsPersistedCacheFirstAndLegacyCacheOnlyCollectsOnExplicitRefresh()
+    {
+        using var client = fixture.CreateClient(); var name = Unique("commits");
+        var original = await Analyze(client, name);
+        Assert.Equal(1, fixture.GitHub.CommitCalls[name]);
+        Assert.NotNull(original.CommitActivity);
+        var cached = await Analyze(client, name);
+        Assert.Equal(1, fixture.GitHub.CommitCalls[name]);
+        Assert.Equal(JsonSerializer.Serialize(original.CommitActivity), JsonSerializer.Serialize(cached.CommitActivity));
+        using (var scope = fixture.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<PortfolioDbContext>();
+            var snapshot = await db.Analyses.SingleAsync(a => a.Id == original.Id);
+            Assert.DoesNotContain("test-only-sha", snapshot.MetadataJson);
+            var metadata = System.Text.Json.Nodes.JsonNode.Parse(snapshot.MetadataJson)!.AsObject();
+            metadata.Remove("commitActivity"); snapshot.MetadataJson = metadata.ToJsonString();
+            await db.SaveChangesAsync();
+        }
+        var legacy = await Analyze(client, name);
+        Assert.Null(legacy.CommitActivity); Assert.Equal(1, fixture.GitHub.CommitCalls[name]);
+        var forced = await Analyze(client, name, true);
+        Assert.NotNull(forced.CommitActivity); Assert.Equal(2, fixture.GitHub.CommitCalls[name]);
+    }
+
     [Fact]
     public async Task DatabaseStatusConfirmsAppliedMigrationsWithoutCallingGitHub()
     {

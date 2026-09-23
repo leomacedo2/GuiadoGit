@@ -9,4 +9,9 @@ public sealed record PortfolioDto(string Username, string? Name, string? Bio,
 }
 
 public sealed record RepositoryDto(long Id, string Name, string? Description,
-    string? Language, string Url, DateTimeOffset UpdatedAt);
+    string? Language, string Url, DateTimeOffset UpdatedAt)
+{
+    public DateTimeOffset? PushedAt { get; init; }
+    public bool IsFork { get; init; }
+    public bool IsArchived { get; init; }
+}

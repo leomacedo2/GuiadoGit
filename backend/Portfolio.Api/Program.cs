@@ -74,6 +74,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<AnalysisLocks>();
 builder.Services.AddScoped<PersistentAnalysisService>();
+builder.Services.AddScoped<ClassroomDashboardService>();
 var cacheHours = builder.Configuration.GetValue<double>("GitHubAnalysisCacheHours", 6);
 if (!double.IsFinite(cacheHours) || cacheHours <= 0 || cacheHours > 168)
     throw new InvalidOperationException("GitHubAnalysisCacheHours deve estar entre 0 (exclusivo) e 168 horas.");

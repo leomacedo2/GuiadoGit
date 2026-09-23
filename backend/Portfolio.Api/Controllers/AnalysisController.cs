@@ -22,7 +22,11 @@ public sealed class AnalysisController(PersistentAnalysisService analysis) : Con
         username = username.Trim();
         if (!Regex.IsMatch(username, @"\A[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}\z"))
             return Problem(statusCode: 400, detail: "Informe um username válido do GitHub, sem @ ou URL.");
-        try { return Ok(await analysis.GetAsync(username, force, cancellationToken)); }
+        try
+        {
+            var result = await analysis.GetAsync(username, force, cancellationToken);
+            return Ok(result);
+        }
         catch (GitHubApiException ex) { return Problem(statusCode: ex.StatusCode, detail: ex.Message); }
     }
 }

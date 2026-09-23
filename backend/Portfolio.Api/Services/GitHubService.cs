@@ -9,6 +9,18 @@ namespace Portfolio.Api.Services;
 public sealed class GitHubService(HttpClient client, GitHubRequestContext? context = null) : IGitHubService
 {
     public int RequestCount { get; private set; }
+    public async Task<GitHubCommitPage> GetCommitsAsync(string owner, string repository, string author,
+        DateTimeOffset since, DateTimeOffset until, int page, CancellationToken cancellationToken)
+    {
+        static string Date(DateTimeOffset value) => Uri.EscapeDataString(value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture));
+        var hasNext = false;
+        var commits = await GetAsync<List<GitHubCommit>>(
+            $"repos/{Uri.EscapeDataString(owner)}/{Uri.EscapeDataString(repository)}/commits?author={Uri.EscapeDataString(author)}&since={Date(since)}&until={Date(until)}&per_page=100&page={page}",
+            cancellationToken, response => hasNext = response.Headers.TryGetValues("Link", out var links) &&
+                links.Any(link => link.Split(',').Any(part => part.Contains("rel=\"next\"", StringComparison.Ordinal))));
+        // Never follow remote Link URLs: only increment page on this fixed endpoint.
+        return new(commits, hasNext);
+    }
     public Task<GitHubTree> GetTreeAsync(string username, string repository, CancellationToken cancellationToken)
         => GetAsync<GitHubTree>($"repos/{Uri.EscapeDataString(username)}/{Uri.EscapeDataString(repository)}/git/trees/HEAD?recursive=1", cancellationToken);
 
@@ -44,7 +56,7 @@ public sealed class GitHubService(HttpClient client, GitHubRequestContext? conte
                     break;
                 }
                 repositories.AddRange(batch.Select(repo => new RepositoryDto(repo.Id, repo.Name,
-                    repo.Description, repo.Language, repo.HtmlUrl, repo.UpdatedAt)));
+                    repo.Description, repo.Language, repo.HtmlUrl, repo.UpdatedAt) { PushedAt = repo.PushedAt, IsFork = repo.IsFork, IsArchived = repo.IsArchived }));
                 if (batch.Count < 100) break;
             }
             return new PortfolioDto(user.Login, user.Name, user.Bio, user.AvatarUrl,
@@ -64,7 +76,7 @@ public sealed class GitHubService(HttpClient client, GitHubRequestContext? conte
         }
     }
 
-    private async Task<T> GetAsync<T>(string path, CancellationToken cancellationToken)
+    private async Task<T> GetAsync<T>(string path, CancellationToken cancellationToken, Action<HttpResponseMessage>? inspect = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
         using var response = await SendCountedAsync(request, cancellationToken);
@@ -82,6 +94,7 @@ public sealed class GitHubService(HttpClient client, GitHubRequestContext? conte
             throw new GitHubApiException(429, "O limite de consultas ao GitHub foi atingido. Aguarde antes de tentar novamente.");
         if (!response.IsSuccessStatusCode)
             throw new GitHubApiException(502, "O GitHub não conseguiu atender à consulta. Tente novamente mais tarde.");
+        inspect?.Invoke(response);
         // Bound memory even if a remote tree is unexpectedly large.
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var buffer = new MemoryStream();

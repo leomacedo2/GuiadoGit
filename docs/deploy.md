@@ -202,8 +202,18 @@ Modificados: `backend/Portfolio.Api/Program.cs`, `backend/Portfolio.Api.Tests/Pe
 
 ## Atualização de cobertura, páginas e trilhas
 
+Esta seção descreve a rodada anterior. A versão seguinte de **Turmas exige a migration descrita ao final e em [turmas.md](turmas.md)**.
+
 A rodada de [refinamento](refinamento.md) não exige migration, novo secret, callback OAuth ou variável obrigatória. Dockerfile, portas, CORS, conexão PostgreSQL e configuração Vercel foram preservados. Com auto-deploy habilitado na branch atual, commit/push aciona os builds normais de ambos os serviços; aguarde os dois terminarem antes do smoke test.
 
 Configuração opcional somente no backend: `Analysis__Individual__MaxManifestsPerRepository=16` (padrão; permitido 1–32). O orçamento permanece em 600 chamadas adicionais. Não é preciso editar variáveis para adotar o padrão. As novas dependências são restauradas pelos builds normais; Playwright/Chromium são usados somente em testes locais, não no serviço publicado.
 
 Após deploy, confira `/` como entrada, login → `/minhas-analises`, visitante → `/analisar` → `/perfil/{username}`, gráficos nos dois temas e refresh de rotas. Snapshots antigos continuam válidos e podem mostrar avisos antigos; **Atualizar pelo GitHub** aplica as novas regras em uma coleta explícita. Não limpe o banco nem o cache para atualizar a interface.
+
+## Atualização de Turmas e atividade temporal
+
+**Ordem: revisar/aplicar manualmente a migration → testar localmente → commit/push → aguardar os dois auto-deploys.** A migration `20260923151210_AddClassroomsAndRepositoryPushActivity` cria somente `portfolio.Classrooms`, `portfolio.ClassroomMembers` e adiciona `PushedAt` nullable em `portfolio.RepositoryAnalysis`. A API não aplica migrations ao iniciar. Não faça push para disparar auto-deploy antes da atualização do banco: a versão nova já consulta essas estruturas.
+
+Os [comandos exatos e roteiro de teste](turmas.md) reutilizam sua configuração local já existente quando você os executa. Nenhum secret, connection string, certificado, callback, origem CORS ou URL da API precisa ser alterado. Não há nova variável de ambiente ou pacote de gráficos. O fallback SPA existente atende `/turmas` e `/turmas/{id}`; visitante é encaminhado à entrada, e reload exige novo login porque a sessão continua em memória.
+
+Depois do deploy confira `/health`, `/api/database/status`, criação/edição de turma e dashboards a partir dos perfis salvos. A atualização posterior para [commits por tecnologia](commits.md) não exige nova migration ou variável obrigatória. Snapshots sem commitActivity exibem a orientação para atualização individual explícita. A nova coleta tem orçamento próprio; abrir turma ou snapshot salvo continua sem chamar GitHub. Não há atualização automática de toda a turma.
