@@ -201,3 +201,20 @@ test('trilha base representada mostra aprofundamento e mantém leitura de snapsh
   await expect(page.getByText('Não há sugestões adicionais com os pré-requisitos observados neste snapshot.', { exact: false })).toBeVisible();
   await expect(page.getByText('A trilha base está bem representada', { exact: false })).toHaveCount(0);
 });
+
+test('perfil vazio oferece somente opções introdutórias neutras, sem novas consultas', async ({ page }) => {
+  const calls = await mockApi(page, false, result => ({ ...result, skills: [], recommendations: [], learningTracks: [],
+    profile: { ...result.profile, publicRepositories: 0, repositories: [] }, analyzedRepositories: 0, inspectedRepositories: 0 }));
+  await page.goto('/perfil/perfil-vazio');
+  await nav(page, 'Recomendações');
+  await expect(page.getByText('Ainda não encontramos evidências suficientes nos repositórios públicos para personalizar sua trilha.')).toBeVisible();
+  for (const name of ['Frontend', 'Backend', 'Dados']) await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+  await expect(page.getByText('Uma possível trilha para começar é:', { exact: true })).toHaveCount(3);
+  await expect(page.getByText('HTML → CSS → JavaScript', { exact: true })).toBeVisible();
+  await expect(page.getByText('Lógica/fundamentos → linguagem → API → banco de dados', { exact: true })).toBeVisible();
+  await expect(page.getByText('Python → SQL → análise de dados', { exact: true })).toBeVisible();
+  await expect(page.getByText('Já demonstrado nos repositórios')).toHaveCount(0);
+  await expect(page.getByText('Prioridades sugeridas', { exact: false })).toHaveCount(0);
+  await noOverflow(page);
+  expect(calls.filter(c => c.path.startsWith('/api/analyses/'))).toHaveLength(1);
+});

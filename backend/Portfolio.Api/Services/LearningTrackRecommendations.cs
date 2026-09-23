@@ -29,12 +29,15 @@ public sealed partial class RecommendationService
                 return new Ranked(track, Area(track.Name), score, candidates, signals);
             }).OrderByDescending(t => t.Score).ThenBy(t => t.Track.Name).ToList();
 
-        // Select one backend stack, not one mandatory roadmap for each backend language.
+        // Consolidated stacks keep the existing area selection; language-only profiles can explore alternatives.
         var selected = ranked.GroupBy(t => t.Area).Select(group => group.First()).ToList();
         // Full Stack only qualifies with both a frontend and an actual backend framework.
         var fullStack = selected.FirstOrDefault(t => t.Area == "Full Stack");
         if (fullStack is not null)
             selected = selected.Where(t => t.Area is "Frontend" or "Backend" or "Full Stack").ToList();
+        else if (ranked.Any(t => t.Area == "Backend") &&
+            !new[] { "ASP.NET Core", "Spring Boot", "APIs Python", "FastAPI", "Flask" }.Any(Has))
+            selected = ranked.Take(3).ToList();
         else if (selected.Count > 0)
             selected = selected.Where(t => t.Score * 2 >= selected.Max(t => t.Score)).Take(3).ToList();
 
@@ -60,7 +63,8 @@ public sealed partial class RecommendationService
             {
                 BaseWellRepresented = baseCovered,
                 ProgressionMessage = baseCovered && next.Count > 0
-                    ? "A trilha base está bem representada nos repositórios. Veja alguns próximos desafios de aprofundamento." : null
+                    ? "A trilha base está bem representada nos repositórios. Veja alguns próximos desafios de aprofundamento."
+                    : item.Signals.Count == 1 ? InitialProgression(item.Track.Name) : null
             });
         }
         return output.OrderBy(t => t.Area switch { "Frontend" => 0, "Backend" => 1, "Full Stack" => 2, _ => 3 }).ToList();
@@ -86,6 +90,13 @@ public sealed partial class RecommendationService
 
     private static string Area(string name) => name.StartsWith("Backend") ? "Backend" : name.StartsWith("Frontend") ? "Frontend"
         : name.StartsWith("Mobile") ? "Mobile" : name.StartsWith("Dados") ? "Dados" : "Full Stack";
+    private static string? InitialProgression(string track) => track switch
+    {
+        "Backend .NET" => "A partir da evidência de C#, uma possível progressão é ASP.NET Core → Web API/REST → Entity Framework Core. Construa uma etapa por vez; as posteriores não são pré-requisitos já demonstrados.",
+        "Backend Python" => "A partir da evidência de Python, uma possível progressão é organização do projeto e fundamentos → testes → FastAPI/Flask → API REST. Construa uma etapa por vez; as posteriores não são pré-requisitos já demonstrados.",
+        "Backend Java" => "A partir da evidência de Java, uma possível progressão é Maven/Gradle → Spring Boot → REST → JPA. Construa uma etapa por vez; as posteriores não são pré-requisitos já demonstrados.",
+        _ => null
+    };
     // Equivalent SQL goals should not be repeated just because the roadmaps name them differently.
     private static string TopicKey(string topic) => topic switch
     {

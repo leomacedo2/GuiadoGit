@@ -1,14 +1,23 @@
 import { useState } from 'react';
 import RecommendationCard from '../components/RecommendationCard';
 
+const startingPaths = [
+  ['Frontend', 'HTML → CSS → JavaScript'],
+  ['Backend', 'Lógica/fundamentos → linguagem → API → banco de dados'],
+  ['Dados', 'Python → SQL → análise de dados'],
+];
+
 export default function RecommendationsPage({ analysis }) {
   const tracks = analysis.learningTracks || [];
   const [area, setArea] = useState('Todas');
   const areas = ['Todas', ...new Set(tracks.map(track => track.area))];
   const selected = areas.includes(area) ? area : 'Todas';
+  const introductory = tracks.length === 0 && analysis.recommendations.length === 0;
   return <section aria-labelledby="recommendations-title">
     <h1 id="recommendations-title" className="h2">Trilhas e recomendações</h1>
-    <p className="text-body-secondary">Até três trilhas relacionadas às evidências do perfil. Os próximos passos são possibilidades de estudo, não uma avaliação de proficiência.</p>
+    <p className="text-body-secondary">{introductory
+      ? 'Ainda não encontramos evidências suficientes nos repositórios públicos para personalizar sua trilha.'
+      : 'Até três trilhas relacionadas às evidências do perfil. Os próximos passos são possibilidades de estudo, não uma avaliação de proficiência.'}</p>
     {analysis.recommendations.length > 0 && <details className="card mb-4">
       <summary className="card-header py-3 fw-semibold">Prioridades sugeridas ({analysis.recommendations.length})</summary>
       <div className="card-body"><div className="row g-3">{analysis.recommendations.map(item => <div className="col-12 col-lg-4" key={`${item.track}-${item.topic}`}><RecommendationCard recommendation={item} /></div>)}</div></div>
@@ -25,7 +34,7 @@ export default function RecommendationsPage({ analysis }) {
           <div className="d-flex flex-wrap gap-2 mb-4">{track.demonstratedSkills.map(name => <span className="badge bg-success-subtle text-success-emphasis text-wrap" key={name}>✓ {name}</span>)}</div>
           <h3 className="h6">Próximos passos</h3>
           {track.progressionMessage && <p className="text-body-secondary">{track.progressionMessage}</p>}
-          {!track.nextSteps.length && <p>Não há sugestões adicionais com os pré-requisitos observados neste snapshot. Isso não significa domínio da trilha nem ausência de possibilidades de estudo.</p>}
+          {!track.nextSteps.length && !track.progressionMessage && <p>Não há sugestões adicionais com os pré-requisitos observados neste snapshot. Isso não significa domínio da trilha nem ausência de possibilidades de estudo.</p>}
           <ol className="list-group list-group-numbered">
             {track.nextSteps.map(step => <li className="list-group-item" key={step.topic}>
               <strong>{step.topic}</strong><p className="mt-2 mb-2">{step.nextStep}</p>
@@ -40,6 +49,15 @@ export default function RecommendationsPage({ analysis }) {
           </ol>
         </div>
       </article>)}
-    </> : <p>{analysis.recommendations.length ? 'Este snapshot preserva recomendações da versão anterior. Atualize pelo GitHub no perfil para obter as trilhas ampliadas.' : 'Ainda não há evidências suficientes para sugerir trilhas relevantes. Isso não significa ausência de conhecimento.'}</p>}
+    </> : introductory ? <>
+      <p>Estas são opções de início, sem indicar preferência ou conhecimento prévio. Ausência de evidência não significa desconhecimento.</p>
+      <div className="row g-3">{startingPaths.map(([name, path]) => <div className="col-12 col-lg-4" key={name}>
+        <article className="card h-100"><div className="card-body">
+          <h2 className="h4">{name}</h2>
+          <p>Uma possível trilha para começar é:</p>
+          <p className="mb-0">{path}</p>
+        </div></article>
+      </div>)}</div>
+    </> : <p>Este snapshot preserva recomendações da versão anterior. Atualize pelo GitHub no perfil para obter as trilhas ampliadas.</p>}
   </section>;
 }

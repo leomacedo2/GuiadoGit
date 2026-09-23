@@ -21,10 +21,10 @@ public sealed class ExpandedTrackTests
     }
 
     [Fact]
-    public void BackendPrioritizesRecurrenceAndDoesNotForceEveryLanguage()
+    public void InitialBackendOptionsPrioritizeRecurrence()
     {
         var tracks = new RecommendationService().BuildTracks([Skill("Python", 1), Skill("C#", 5)]);
-        Assert.Equal("Backend .NET", Assert.Single(tracks).Name);
+        Assert.Equal(new[] { "Backend .NET", "Backend Python" }, tracks.Select(t => t.Name));
         var java = Assert.Single(Tracks("Java", "Gradle", "Spring Boot", "REST API"));
         Assert.Contains(java.NextSteps, step => step.Topic == "JPA");
         Assert.DoesNotContain(java.NextSteps, step => step.Topic is "Maven" or "Maven/Gradle");
