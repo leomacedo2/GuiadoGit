@@ -275,4 +275,51 @@ public sealed class PersistenceTests(PersistenceFixture fixture) : IClassFixture
         Assert.Equal(HttpStatusCode.Unauthorized, (await visitor.PostAsJsonAsync("/api/auth/login", new
             { Email = me.GetProperty("email").GetString(), Password = "Wrong-Test123!" })).StatusCode);
     }
+
+    [Fact]
+    public async Task SavedProfilesSortByLatestAnalysisNotBySaveOrder()
+    {
+        using var client = await Account();
+        var older = await Analyze(client, Unique());
+        var newer = await Analyze(client, Unique());
+        (await client.PutAsync($"/api/me/profiles/{newer.Id}", null)).EnsureSuccessStatusCode();
+        (await client.PutAsync($"/api/me/profiles/{older.Id}", null)).EnsureSuccessStatusCode();
+        using (var scope = fixture.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<PortfolioDbContext>();
+            await db.Analyses.Where(a => a.Id == older.Id).ExecuteUpdateAsync(u => u.SetProperty(a => a.AnalyzedAt, DateTimeOffset.UtcNow.AddDays(-2)));
+            await db.Analyses.Where(a => a.Id == newer.Id).ExecuteUpdateAsync(u => u.SetProperty(a => a.AnalyzedAt, DateTimeOffset.UtcNow.AddDays(-1)));
+        }
+        var list = await client.GetFromJsonAsync<JsonElement>("/api/me/profiles");
+        Assert.Equal(newer.Profile.Username, list[0].GetProperty("username").GetString());
+        await Analyze(client, older.Profile.Username, true);
+        list = await client.GetFromJsonAsync<JsonElement>("/api/me/profiles");
+        Assert.Equal(older.Profile.Username, list[0].GetProperty("username").GetString());
+    }
+
+    [Fact]
+    public async Task ExpandedTracksRoundTripAndOldMetadataRemainsReadableWithoutGitHub()
+    {
+        using var client = fixture.CreateClient();
+        var name = Unique();
+        var result = await Analyze(client, name);
+        Assert.NotEmpty(result.LearningTracks);
+        var cached = await Analyze(client, name);
+        Assert.Equal(JsonSerializer.Serialize(result.LearningTracks), JsonSerializer.Serialize(cached.LearningTracks));
+        using (var scope = fixture.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<PortfolioDbContext>();
+            var stored = await db.Analyses.SingleAsync(a => a.Id == result.Id);
+            var metadata = System.Text.Json.Nodes.JsonNode.Parse(stored.MetadataJson)!.AsObject();
+            metadata.Remove("learningTracks"); metadata.Remove("analysisVersion"); metadata.Remove("manifestSafetyLimit");
+            stored.MetadataJson = metadata.ToJsonString();
+            await db.SaveChangesAsync();
+        }
+        var legacy = await Analyze(client, name);
+        Assert.Equal("cache", legacy.Source);
+        Assert.Empty(legacy.LearningTracks);
+        Assert.NotEmpty(legacy.Recommendations);
+        Assert.Equal(0, legacy.AnalysisVersion);
+        Assert.Equal(1, fixture.GitHub.Calls[name]);
+    }
 }

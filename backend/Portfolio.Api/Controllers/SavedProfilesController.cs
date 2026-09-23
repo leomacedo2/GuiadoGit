@@ -26,7 +26,9 @@ public sealed class SavedProfilesController(PortfolioDbContext db, PersistentAna
                     Skills = a.Skills.OrderBy(x => x.Position).Take(4).Select(x => x.Name).ToList()
                 }).FirstOrDefault()
             }).ToListAsync(ct);
-        return Ok(saved.Select(s => new { s.GitHubProfileId, s.SavedAt, s.Username, s.Nome, s.AvatarUrl,
+        return Ok(saved.OrderByDescending(s => s.Latest?.AnalyzedAt ?? DateTimeOffset.MinValue)
+            .ThenByDescending(s => s.SavedAt).ThenBy(s => s.Username, StringComparer.OrdinalIgnoreCase)
+            .Select(s => new { s.GitHubProfileId, s.SavedAt, s.Username, s.Nome, s.AvatarUrl,
             s.Latest, IsExpired = s.Latest is null || s.Latest.ExpiresAt <= clock.GetUtcNow() }));
     }
 

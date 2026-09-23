@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { errorMessage, registerAccount } from '../services/api';
 
 export default function AuthPage({ register = false }) {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ nome: '', email: '', password: '', confirmPassword: '' });
   const [busy, setBusy] = useState(false);
@@ -18,14 +18,16 @@ export default function AuthPage({ register = false }) {
     setBusy(true);
     try {
       if (register) { await registerAccount(form); setCreated(true); setForm({ nome: '', email: '', password: '', confirmPassword: '' }); }
-      else { await login({ email: form.email, password: form.password }); navigate('/minhas-analises'); }
+      else { await login({ email: form.email, password: form.password }); navigate('/minhas-analises', { replace: true }); }
     } catch (failure) { setError(errorMessage(failure)); }
     finally { setBusy(false); }
   }
+  if (user) return <Navigate to="/minhas-analises" replace />;
   if (created) return <div className="alert alert-success">Conta criada. <Link to="/login">Entrar na plataforma</Link>.</div>;
-  return <section className="search-panel mx-auto">
-    <h1 className="h2">{register ? 'Criar conta' : 'Entrar'}</h1>
-    <p className="text-body-secondary">Sua conta da plataforma é independente do GitHub. Use-a para guardar perfis públicos na sua lista.</p>
+  return <section className="auth-panel mx-auto">
+    <h1 className="display-6 fw-bold">{register ? 'Criar conta' : 'GuiaDoGit'}</h1>
+    <p className="text-body-secondary mb-4">Analise portfólios GitHub, identifique tecnologias demonstradas e acompanhe sua evolução.</p>
+    <div className="card"><div className="card-body p-4">
     {error && <div className="alert alert-danger" role="alert">{error}</div>}
     <form onSubmit={submit}>
       {(register ? [['nome', 'Nome', 'text'], ['email', 'E-mail', 'email'], ['password', 'Senha', 'password'], ['confirmPassword', 'Confirmar senha', 'password']]
@@ -38,10 +40,12 @@ export default function AuthPage({ register = false }) {
           autoComplete={key === 'nome' ? 'name' : key === 'email' ? 'username' : register ? 'new-password' : 'current-password'} />
       </div>)}
       {register && <p className="form-text">Senha de 8 a 128 caracteres, com maiúscula, minúscula, número e símbolo.</p>}
-      <button className="btn btn-primary" disabled={busy}>{busy ? 'Aguarde…' : register ? 'Criar conta' : 'Entrar'}</button>
+      <button className="btn btn-primary w-100" disabled={busy}>{busy ? 'Aguarde…' : register ? 'Criar conta' : 'Entrar'}</button>
       {busy && <p className="form-text" role="status">A primeira conexão pode demorar enquanto o servidor inicia.</p>}
     </form>
-    <p className="small text-body-secondary mt-3">Por segurança, a sessão fica apenas nesta aba e termina ao recarregar ou após 30 minutos. Seus perfis salvos permanecem na conta.</p>
-    <Link to={register ? '/login' : '/cadastro'}>{register ? 'Já tenho conta' : 'Criar uma conta'}</Link>
+    <Link className="btn btn-outline-primary w-100 mt-3" to={register ? '/login' : '/cadastro'}>{register ? 'Já tenho conta' : 'Criar conta'}</Link>
+    </div></div>
+    <Link className="btn btn-outline-secondary w-100 mt-3" to="/analisar">Continuar como visitante</Link>
+    <p className="small text-body-secondary mt-3">Sua conta da plataforma é independente do GitHub. A sessão fica apenas nesta aba e termina ao recarregar ou após 30 minutos; suas análises salvas permanecem.</p>
   </section>;
 }

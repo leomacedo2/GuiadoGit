@@ -32,20 +32,20 @@ export default function SavedAnalysesPage({ onOpen }) {
     <p className="text-body-secondary">Abrir usa a última análise salva, mesmo expirada. Atualizar consulta o GitHub e renova o resultado compartilhado.</p>
     {error && <div className="alert alert-danger" role="alert">{error}</div>}
     {busy && <p role="status">Carregando… Uma atualização pode levar alguns minutos.</p>}
-    {!busy && !profiles.length && <p>Você ainda não salvou nenhum perfil. <Link to="/">Analisar um perfil</Link>.</p>}
+    {!busy && !error && !profiles.length && <div className="card"><div className="card-body p-4"><p>Você ainda não possui análises salvas.</p><Link className="btn btn-primary" to="/analisar">Fazer minha primeira análise</Link></div></div>}
     <div className="row g-3">{profiles.map(profile => <div className="col-12 col-lg-6" key={profile.gitHubProfileId}>
       <article className="card h-100"><div className="card-body">
         <div className="d-flex align-items-center gap-3 mb-3">
           <img src={profile.avatarUrl} alt="" width="56" height="56" className="rounded-circle" />
-          <div><h2 className="h5 mb-1">{profile.nome || profile.username}</h2><span className="text-body-secondary">@{profile.username}</span></div>
+          <div className="profile-details text-break"><h2 className="h5 mb-1">{profile.nome || profile.username}</h2><span className="text-body-secondary">@{profile.username}</span></div>
         </div>
         <div className="d-flex gap-2 flex-wrap mb-3">{profile.latest?.skills.map(skill => <span key={skill} className="badge text-bg-secondary">{skill}</span>)}</div>
-        <p className="small mb-2">Última análise: {profile.latest ? new Date(profile.latest.analyzedAt).toLocaleString('pt-BR') : 'indisponível'}</p>
+        <p className="small mb-2">Última atualização: {profile.latest ? new Date(profile.latest.analyzedAt).toLocaleString('pt-BR') : 'indisponível'}</p>
         <p><span className={`badge ${profile.isExpired ? 'text-bg-warning' : 'text-bg-success'}`}>{profile.isExpired ? 'Expirada' : 'Recente'}</span>{profile.latest && !profile.latest.isComplete && <span className="badge text-bg-warning ms-2">Cobertura parcial</span>}</p>
         <div className="d-flex flex-wrap gap-2">
-          <button className="btn btn-primary" disabled={busy} onClick={() => action(profile, 'open')}>Abrir análise</button>
+          <button className="btn btn-primary" disabled={busy} onClick={() => action(profile, 'open')}>Ver perfil</button>
           <button className="btn btn-outline-primary" disabled={busy} onClick={() => action(profile, 'refresh')}>Atualizar</button>
-          <button className="btn btn-outline-danger" disabled={busy} onClick={() => action(profile, 'remove')}>Remover da minha lista</button>
+          <button className="btn btn-outline-danger" disabled={busy} onClick={() => action(profile, 'remove')}>Remover</button>
         </div>
       </div></article>
     </div>)}</div>

@@ -91,7 +91,7 @@ Mantenha SSL com validação (`VerifyFull`). Se a configuração local usa um ca
 
 `VITE_API_BASE_URL` é pública e incorporada ao JavaScript durante o build. Alterá-la exige **redeploy do frontend**. Nunca cadastre connection string, Client Secret ou token GitHub em variáveis `VITE_*`. Axios continua centralizado em `frontend/src/services/api.js`, enviando requisições diretamente ao Render, sem proxy Vercel para a API. Sem variável, o fallback continua localhost:5080 para uso local; portanto não omita a variável no deploy.
 
-`frontend/vercel.json` reescreve navegações SPA para `/index.html`. Acesso direto/reload de `/login`, `/cadastro`, `/skills`, `/recomendacoes`, `/repositorios`, `/perfil` e `/minhas-analises` carrega o React em vez de 404. A rota pessoal pede login após recarregar, conforme a sessão em memória já existente. [Vite e SPA no Vercel](https://vercel.com/docs/frameworks/frontend/vite).
+`frontend/vercel.json` reescreve navegações SPA para `/index.html`. Acesso direto/reload de `/login`, `/cadastro`, `/analisar`, `/perfil/{username}`, `/skills`, `/recomendacoes`, `/repositorios`, `/perfil` e `/minhas-analises` carrega o React em vez de 404. A rota pessoal pede login após recarregar, conforme a sessão em memória já existente. As páginas de resultado usam `?perfil=username` para recuperar o contexto após reload. [Vite e SPA no Vercel](https://vercel.com/docs/frameworks/frontend/vite).
 
 ## Parte C — CORS e HTTPS
 
@@ -199,3 +199,11 @@ Os testes completos exigem Docker Desktop (PostgreSQL descartável), sem usar Su
 Criados: `.dockerignore`, `backend/Portfolio.Api/Dockerfile`, `backend/Portfolio.Api/appsettings.Production.json`, `backend/Portfolio.Api/Deployment/DeploymentConfiguration.cs`, `DatabaseDiagnostics.cs`, `GitHubDiagnosticsHandler.cs`, `backend/Portfolio.Api.Tests/DeploymentTests.cs`, `frontend/vercel.json`, `docs/deploy.md`.
 
 Modificados: `backend/Portfolio.Api/Program.cs`, `backend/Portfolio.Api.Tests/PersistenceTests.cs`, `frontend/src/services/api.js`, `frontend/src/pages/AuthPage.jsx`, `frontend/src/App.jsx`, `README.md`, `docs/persistencia.md` (referência ao diagnóstico agora disponível em produção).
+
+## Atualização de cobertura, páginas e trilhas
+
+A rodada de [refinamento](refinamento.md) não exige migration, novo secret, callback OAuth ou variável obrigatória. Dockerfile, portas, CORS, conexão PostgreSQL e configuração Vercel foram preservados. Com auto-deploy habilitado na branch atual, commit/push aciona os builds normais de ambos os serviços; aguarde os dois terminarem antes do smoke test.
+
+Configuração opcional somente no backend: `Analysis__Individual__MaxManifestsPerRepository=16` (padrão; permitido 1–32). O orçamento permanece em 600 chamadas adicionais. Não é preciso editar variáveis para adotar o padrão. As novas dependências são restauradas pelos builds normais; Playwright/Chromium são usados somente em testes locais, não no serviço publicado.
+
+Após deploy, confira `/` como entrada, login → `/minhas-analises`, visitante → `/analisar` → `/perfil/{username}`, gráficos nos dois temas e refresh de rotas. Snapshots antigos continuam válidos e podem mostrar avisos antigos; **Atualizar pelo GitHub** aplica as novas regras em uma coleta explícita. Não limpe o banco nem o cache para atualizar a interface.

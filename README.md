@@ -1,10 +1,12 @@
-# Portfólio GitHub — evidências e recomendações
+# GuiaDoGit — evidências e recomendações
 
-Integração real entre React → ASP.NET Core Web API (.NET 8) → GitHub REST API. Nome e logo definitivos ainda estão em aberto. O plano mestre original foi lido integralmente e preservado.
+Integração real entre React → ASP.NET Core Web API (.NET 8) → GitHub REST API, com PostgreSQL/Supabase. O plano mestre original foi preservado.
 
 ## Escopo entregue
 
-Consulta pública sem login: perfil, repositórios, skills com evidências explicáveis e recomendações de estudo por regras. A Home mostra perfil, cobertura, até seis skills e três recomendações. As listas completas ficam em `/skills`, `/recomendacoes` e `/repositorios`; `/perfil` também mostra o resumo. Inclui loading, mensagens de erro, validação de username e Bootstrap 5 com tema claro/escuro.
+`/` apresenta login, criação de conta e **Continuar como visitante**. Login abre `/minhas-analises`; a consulta pública continua sem exigir conta em `/analisar` e abre o resultado em `/perfil/{username}`. O perfil reúne cobertura, resumo, gráficos de evidências e trilhas. As páginas `/skills`, `/recomendacoes` e `/repositorios` preservam o perfil na URL com `?perfil=username`. Inclui loading, mensagens de erro, validação de username e Bootstrap 5 com tema claro/escuro.
+
+Veja o [relatório de refinamento e checklist de validação](docs/refinamento.md): até 16 manifestos relevantes por repositório, sem aumentar o orçamento global; até três trilhas contextuais e gráficos com contagens reais. Snapshots anteriores continuam legíveis e só recebem as novas regras em uma nova coleta.
 
 Inclui PostgreSQL com EF Core 8, contas da plataforma, cache compartilhado por seis horas e `/minhas-analises`. Uma conta autenticada pode conectar opcionalmente seu GitHub em `/github`, após habilitação segura pelo administrador: veja [configuração OAuth e proteção dos tokens](docs/github-autenticacao.md). Isso não substitui cadastro/login da plataforma. O Supabase é usado como PostgreSQL. Não há vagas, turmas ou IA.
 
@@ -36,7 +38,7 @@ A API escuta em http://localhost:5080. O `launchSettings.json` mantém `commandN
 1. Abra a pasta **ProjetoFinal** inteira no VS Code, para carregar `.vscode/tasks.json`.
 2. Na primeira execução ou após mudanças nas dependências, use **Terminal → Executar Tarefa… → Frontend: instalar dependências**.
 3. Use **Terminal → Executar Tarefa… → Frontend: iniciar Vite**. Também é possível abrir a paleta com Ctrl+Shift+P e buscar **Tasks: Run Task**.
-4. Abra http://localhost:5173 e consulte `leomacedo2`.
+4. Abra http://localhost:5173, escolha **Continuar como visitante** e analise um username público. Para salvar perfis, entre com sua conta.
 
 A task executa `npm run dev` dentro de `frontend` no terminal integrado, sem terminal externo. Para encerrar, use **Tasks: Terminate Task** na paleta ou Ctrl+C no terminal da task. Nenhuma porta foi alterada. Encerre instâncias anteriores antes de iniciar pelo editor.
 
@@ -74,10 +76,10 @@ Para conferir: abra a página sem preferência salva, alterne para claro, recarr
 
 ## Testar o marco
 
-1. Abra a página inicial.
-2. Digite `leomacedo2` e clique em **Analisar Portfólio**.
-3. Confira o loading, o perfil, a cobertura e os resumos de skills e recomendações.
-4. Navegue pelos três botões da Home; em Skills, confira os repositórios e motivos. Em Repositórios, a lista completa continua disponível, com os links originais.
+1. Abra a página inicial e escolha **Continuar como visitante**.
+2. Em `/analisar`, digite um username público (por exemplo, `leomacedo2`, apenas como dado de teste) e clique em **Analisar**.
+3. Confira o redirecionamento para `/perfil/{username}`, os dados, a cobertura e os gráficos.
+4. Navegue por Skills, Recomendações e Repositórios; as evidências são recolhíveis e as contagens representam repositórios, não domínio técnico.
 5. Para testar erro 404, consulte `portfolio-missing-7d8931b9` (inexistente na validação).
 6. Para testar validação, digite `test--name`.
 7. Para testar falha de conexão, pare o backend e faça uma nova consulta; depois reinicie-o.
@@ -101,6 +103,9 @@ No frontend:
 
 ```powershell
 npm run build
+npm test
+npx playwright install chromium
+npm run test:e2e
 ```
 
 Validação histórica do primeiro marco em 17/09/2026 (resultados das fases posteriores estão nos guias de persistência, deploy e autenticação):
@@ -174,8 +179,8 @@ O backend aceita Client ID + Client Secret de OAuth App por User Secrets (desenv
 - A paginação não é uma fotografia atômica: mudanças no perfil durante a consulta podem afetar a contagem. IDs repetidos são removidos.
 - Datas usam `updated_at` do GitHub e o fuso horário do navegador; não representam necessariamente a data do último commit.
 - Linguagens também são detectadas por extensões na amostra de arquivos. As regras não comprovam autoria, execução de testes, funcionamento dos projetos ou proficiência; forks e exemplos também podem produzir evidências.
-- HTTP e origens locais foram configurados para desenvolvimento. Publicação e HTTPS ficam para um marco posterior.
+- HTTP é usado apenas localmente. O deploy existente usa HTTPS, CORS por origem e configuração de ambiente descritos no guia de deploy.
 
 Referências da integração: [GitHub REST — início](https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api) e [repositórios de usuários](https://docs.github.com/en/rest/repos/repos#list-repositories-for-a-user).
 
-As recomendações agora seguem [trilhas de aprendizagem](docs/trilhas.md), com até três sugestões, pré-requisitos e evidências consideradas.
+As recomendações seguem [trilhas de aprendizagem](docs/trilhas.md), com até três trilhas, até quatro próximos passos em cada uma e até três prioridades resumidas, baseadas em pré-requisitos e evidências consideradas.

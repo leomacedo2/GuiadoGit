@@ -3,9 +3,9 @@ export default function ProfileCard({ portfolio }) {
             <div className="card-body p-4 d-flex flex-column flex-sm-row align-items-start gap-4">
               <img className="avatar rounded-circle" src={portfolio.avatarUrl} alt={`Avatar de ${portfolio.username}`} width="104" height="104" />
               <div className="flex-grow-1 profile-details">
-                <h2 className="h3 mb-1">{portfolio.name || portfolio.username}</h2>
+                <h1 className="h3 mb-1 text-break">{portfolio.name || portfolio.username}</h1>
                 <a href={portfolio.profileUrl} target="_blank" rel="noopener noreferrer">@{portfolio.username}</a>
-                <p className="my-3 text-body-secondary bio">{portfolio.bio || 'Este perfil ainda não possui bio.'}</p>
+                {portfolio.bio && <p className="my-3 text-body-secondary bio">{portfolio.bio}</p>}
                 <span className="badge bg-body-secondary text-body border">{portfolio.publicRepositories} repositórios públicos</span>
               </div>
             </div>

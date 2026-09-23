@@ -9,7 +9,7 @@ A conexão vem desabilitada (`GitHub:OAuth:Enabled=false`) para permitir primeir
 1. Visitante ou conta sem conexão utilizável: `GitHubService` mantém `ClientId + ClientSecret` via HTTP Basic exclusivamente no backend. O modo anônimo e o token de aplicação legado continuam disponíveis quando OAuth de usuário está desabilitado; nunca configure o token legado junto com o par do OAuth App.
 2. Conta autenticada com conexão válida: a chamada GitHub usa `Authorization: Bearer` com o access token daquela conexão. O frontend envia apenas o bearer **da plataforma** nas consultas; nunca recebe o token GitHub.
 
-Antes de escolher credenciais, `PersistentAnalysisService` consulta o cache global. Um snapshot fresco atende visitantes e contas conectadas sem consulta externa nem leitura/descriptografia da conexão. Force refresh mantém o comportamento atual. Seis horas são frescor, não exclusão: snapshots permanecem no PostgreSQL. Tetos de 200 repositórios, 600 chamadas adicionais, 180 segundos e dois manifestos por repositório não mudaram.
+Antes de escolher credenciais, `PersistentAnalysisService` consulta o cache global. Um snapshot fresco atende visitantes e contas conectadas sem consulta externa nem leitura/descriptografia da conexão. Force refresh mantém o comportamento atual. Seis horas são frescor, não exclusão: snapshots permanecem no PostgreSQL. Tetos de 200 repositórios, 600 chamadas adicionais e 180 segundos foram preservados. O [refinamento de cobertura](refinamento.md) aumentou apenas o teto de manifestos relevantes por repositório de 2 para 16, configurável, com seleção por relevância e reutilização de blobs.
 
 ## Fluxo e endpoints
 

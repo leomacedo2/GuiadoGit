@@ -2,6 +2,16 @@
 body { margin: 0; background: var(--bs-tertiary-bg); color: var(--bs-body-color); }
 .app-shell { min-height: 100vh; }
 .search-panel { max-width: 760px; }
+.auth-panel { max-width: 480px; }
+.account-name { max-width: 180px; }
+.evidence-chart { position: relative; width: 100%; min-width: 0; }
+.card, .card-body, .row > * { min-width: 0; }
+summary { cursor: pointer; }
+.nav-link { overflow-wrap: anywhere; }
+[data-bs-theme="dark"] .btn-outline-secondary { --bs-btn-color: var(--bs-secondary-color); --bs-btn-border-color: var(--bs-secondary-color); }
+[data-bs-theme="dark"] .btn-outline-primary { --bs-btn-color: var(--bs-primary-text-emphasis); }
+[data-bs-theme="dark"] .nav { --bs-nav-link-color: var(--bs-link-color); }
+.table th, .table td { overflow-wrap: anywhere; }
 .avatar { object-fit: cover; flex-shrink: 0; }
 .profile-details { min-width: 0; }
 .bio { white-space: pre-line; overflow-wrap: anywhere; }

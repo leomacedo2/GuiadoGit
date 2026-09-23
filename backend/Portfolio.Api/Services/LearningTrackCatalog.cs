@@ -57,4 +57,42 @@ public static class LearningTrackCatalog
             S("Persistência", "Persistência,AsyncStorage,SQLite", "React Native,Expo;Navegação,Expo Router,React Navigation,Consumo de API,Axios", "Salve uma preferência local e restaure ao abrir o app.", false),
             S("Testes automatizados", "Testes automatizados,Jest", "React Native,Expo;Persistência,AsyncStorage,SQLite", "Teste uma interação e uma falha de persistência.", false))
     ];
+
+    // Extended views retain the original priority contract while adding practical, contextual steps.
+    public static IReadOnlyList<LearningTrack> Expanded { get; } = All.Select(track => track with
+    {
+        Steps = track.Steps.Select(step => (track.Name, step.Topic) switch
+        {
+            ("Backend Java", "Maven") => step with { Topic = "Maven/Gradle", Signals = ["Maven", "Gradle"] },
+            ("Backend Java", _) => step with { Requires = step.Requires.Select(group => group.Contains("Maven") ? group.Concat(["Gradle"]).ToArray() : group).ToArray() },
+            ("Backend .NET", "SQL Server") => step with { Topic = "SQL", Signals = ["SQL", "SQL Server", "PostgreSQL", "SQLite", "MySQL"], Practice = "Pratique relacionamentos e consultas no banco SQL já utilizado pelo projeto." },
+            ("Backend .NET", "Testes automatizados") => step with { Topic = "Testes .NET", Signals = ["xUnit", "NUnit", "Testes .NET"] },
+            ("Backend Python", "Testes automatizados") => step with { Topic = "Testes com pytest", Signals = ["pytest", "Testes Python"] },
+            ("Frontend React", "Testes automatizados") => step with { Topic = "Testes de frontend", Signals = ["Testes de frontend", "Jest", "Vitest"] },
+            ("Mobile React Native", "Testes automatizados") => step with { Topic = "Testes mobile", Signals = ["Testes mobile"] },
+            _ => step
+        }).Concat(track.Name == "Frontend React" ? new[]
+        {
+            S("Acessibilidade", "Acessibilidade", "React;React Router,Consumo de API", "Revise navegação por teclado, rótulos de formulários e contraste; registre os testes e correções.", false),
+            S("Gerenciamento de estado", "Gerenciamento de estado", "React;React Router,Consumo de API", "Implemente um fluxo de estado compartilhado e documente por que Context ou uma biblioteca é adequada.", false),
+            S("Performance web", "Performance web", "React;Testes de frontend,Gerenciamento de estado", "Meça carregamento e renderização antes/depois de uma melhoria e registre os resultados.", false)
+        } : []).ToArray()
+    }).Concat([
+        T("Full Stack", "HTML,React;JavaScript,TypeScript;ASP.NET Core,Spring Boot,APIs Python,FastAPI,Flask",
+            S("Frontend do perfil", "HTML,CSS,JavaScript,TypeScript,React,React Router", "", "", false),
+            S("Backend do perfil", "C#,ASP.NET Core,Web API,Java,Spring Boot,Python,APIs Python,FastAPI,Flask,REST API", "", "", false),
+            S("Persistência SQL", "SQL,SQL Server,PostgreSQL,SQLite,MySQL,Entity Framework Core,JPA,SQLAlchemy", "ASP.NET Core,Spring Boot,APIs Python,FastAPI,Flask", "Adicione uma operação persistida em SQL à API da stack já demonstrada e exponha o resultado na interface.", false),
+            S("Integração frontend/API", "Consumo de API", "HTML,React;ASP.NET Core,Spring Boot,APIs Python,FastAPI,Flask", "Conecte uma tela à API da stack já demonstrada, com DTOs, validação, loading e tratamento de erros.", false),
+            S("Autenticação integrada", "Autenticação integrada", "Consumo de API;ASP.NET Core,Spring Boot,APIs Python,FastAPI,Flask", "Integre a interface a um mecanismo oficial de autenticação da sua stack; teste expiração, logout e acesso negado. Dependência de autenticação isolada não comprova essa integração.", false),
+            S("Testes de integração", "Testes de integração", "HTML,React;ASP.NET Core,Spring Boot,APIs Python,FastAPI,Flask", "Teste uma operação da interface até a API e persistência de teste, incluindo uma falha; não use banco de produção.", false),
+            S("Docker", "Docker", "ASP.NET Core,Spring Boot,APIs Python,FastAPI,Flask;SQL,SQL Server,PostgreSQL,SQLite,MySQL,Entity Framework Core,JPA,SQLAlchemy", "Documente a execução integrada da interface, API e banco de desenvolvimento com containers.", false),
+            S("CI/CD", "CI/CD", "Docker;Testes automatizados,Testes de integração", "Execute builds e testes das duas partes em um workflow, sem versionar secrets.", false),
+            S("Deploy integrado", "Deploy integrado", "CI/CD;Docker", "Publique interface e API com HTTPS, CORS e configuração por ambiente; registre health check e rollback.", false)),
+        T("Dados com Python", "Python;Pandas,NumPy",
+            S("Python", "Python", "", ""),
+            S("Manipulação de dados", "Pandas,NumPy", "Python", ""),
+            S("SQL", "SQL,PostgreSQL,SQLite,MySQL,SQL Server", "Pandas,NumPy", "Carregue um conjunto de dados em SQL e documente consultas de validação.", false),
+            S("Testes de dados", "Testes de dados,pytest", "Pandas,NumPy", "Teste valores ausentes, duplicatas e limites em uma transformação de dados.", false),
+            S("Pipeline de dados", "Pipeline de dados", "Pandas,NumPy;SQL,PostgreSQL,SQLite", "Organize extração, validação e carga reproduzíveis, registrando entradas e saídas.", false))
+    ]).ToArray();
 }

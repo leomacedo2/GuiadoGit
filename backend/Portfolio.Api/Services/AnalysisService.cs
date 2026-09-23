@@ -43,12 +43,12 @@ public sealed class AnalysisService(IGitHubService gitHub, SkillDetector detecto
                     var files = tree.Tree.Where(f => f.Type == "blob" && SkillDetector.IsRelevantPath(f.Path)).ToList();
                     var manifests = new Dictionary<string, string>();
                     inspection = new(files.Select(f => f.Path).ToList(), manifests, tree.Truncated);
-                    var candidates = files.Where(f => SkillDetector.IsManifest(f.Path)).OrderBy(f => f.Path.Count(c => c == '/')).ThenBy(f => f.Path).ToList();
+                    var selection = ManifestSelector.Select(files, limits.MaxManifestsPerRepository);
                     if (tree.Truncated) warnings.Add($"{repo.Name}: árvore de arquivos truncada pelo GitHub.");
-                    if (candidates.Count > 2) warnings.Add($"{repo.Name}: leitura limitada a dois manifestos.");
-                    foreach (var manifest in candidates.Take(2))
+                    if (selection.Omitted > 0) warnings.Add($"{repo.Name}: a análise encontrou mais arquivos relevantes do que o limite seguro de {limits.MaxManifestsPerRepository} manifestos; {selection.Omitted} não foram lidos. Algumas evidências podem não ter sido consideradas.");
+                    foreach (var path in selection.Unreadable) warnings.Add($"{repo.Name}: manifesto {path} excede 64 KiB ou não informa tamanho; conteúdo não inspecionado.");
+                    foreach (var manifest in selection.Files)
                     {
-                        if (manifest.Size is null or > 65536) { warnings.Add($"{repo.Name}: manifesto {manifest.Path} excede o limite de tamanho ou não informa tamanho."); continue; }
                         try
                         {
                             if (!blobCache.TryGetValue(manifest.Sha, out var content))
@@ -62,7 +62,7 @@ public sealed class AnalysisService(IGitHubService gitHub, SkillDetector detecto
                             detector.Detect(repo, new([], new Dictionary<string, string> { [manifest.Path] = content }, false));
                             manifests.Add(manifest.Path, content);
                         }
-                        catch (Exception ex) when (ex is JsonException or XmlException or FormatException or InvalidOperationException)
+                        catch (Exception ex) when (ex is JsonException or XmlException or FormatException or InvalidOperationException or System.Text.RegularExpressions.RegexMatchTimeoutException)
                         { warnings.Add($"{repo.Name}: manifesto {manifest.Path} inválido; ignorado."); }
                     }
                     if (warnings.Count == warningCount) completed++;
@@ -86,13 +86,17 @@ public sealed class AnalysisService(IGitHubService gitHub, SkillDetector detecto
             var level = count switch { 1 => "Pouca evidência", 2 => "Em desenvolvimento", <= 4 => "Boa evidência", _ => "Forte evidência" };
             return new SkillDto(group.Key.Name, group.Key.Category, level, count, group.Select(x => x.Evidence).Distinct().ToList());
         }).OrderByDescending(s => s.RepositoryCount).ThenBy(s => s.Name).ToList();
+        var tracks = recommendations.BuildTracks(skills);
         return new(profile, profile.Repositories.Count, inspected, requests, warnings.Count > 0,
-            warnings.Distinct().ToList(), skills, recommendations.Recommend(skills))
+            warnings.Distinct().ToList(), skills, recommendations.Priorities(tracks, skills))
         {
             TotalGitHubRequests = gitHub.RequestCount - initialRequests,
             CompletelyInspectedRepositories = completed,
             RepositorySafetyLimit = limits.MaxRepositories,
-            RequestSafetyLimit = limits.MaxRequests
+            RequestSafetyLimit = limits.MaxRequests,
+            ManifestSafetyLimit = limits.MaxManifestsPerRepository,
+            AnalysisVersion = 2,
+            LearningTracks = tracks
         };
     }
 }
