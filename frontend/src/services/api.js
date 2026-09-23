@@ -8,21 +8,75 @@ const api = axios.create({
 
 // Platform token only, kept in memory. Never a GitHub or database credential.
 let accessToken = null;
-export function setAccessToken(value) { accessToken = value; }
+let sessionVersion = 0;
+let refreshInFlight = null;
+let initialSession = null;
+let logoutInFlight = null;
+export function setAccessToken(value) { accessToken = value; sessionVersion++; }
+const sessionRequest = { withCredentials: true, headers: { 'X-Session-Request': '1' } };
 api.interceptors.request.use(config => {
+  config.sessionVersion ??= sessionVersion;
   if (accessToken && (config.url.startsWith('/api/me/') || config.url === '/api/auth/me'
+    || config.url === '/api/auth/logout'
     || config.url.startsWith('/api/analyses/') || config.url.startsWith('/api/github/') || config.url.startsWith('/api/classes'))) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
   return config;
 });
-api.interceptors.response.use(response => response, error => {
-  if (error.response?.status === 401 && error.config?.url !== '/api/auth/login') {
-    accessToken = null;
-    window.dispatchEvent(new Event('session-expired'));
+api.interceptors.response.use(response => response, async error => {
+  const config = error.config;
+  if (error.response?.status !== 401 || !config?.headers?.Authorization || config.url === '/api/auth/logout' || config.skipSessionRefresh)
+    return Promise.reject(error);
+  // Never replay a request from an old account after login/logout changed the session.
+  if (config.sessionVersion !== sessionVersion) return Promise.reject(error);
+  if (!config.sessionRetried && !logoutInFlight) {
+    try {
+      // A concurrent request may already have renewed the access token.
+      if (config.headers.Authorization === `Bearer ${accessToken}`) await refreshSession();
+      if (!accessToken || config.sessionVersion !== sessionVersion) throw error;
+    } catch {
+      if (config.sessionVersion === sessionVersion) {
+        setAccessToken(null);
+        window.dispatchEvent(new Event('session-expired'));
+      }
+      return Promise.reject(error);
+    }
+    config.sessionRetried = true;
+    return api.request(config); // A non-401 failure on retry must not discard a valid session.
   }
+  setAccessToken(null);
+  window.dispatchEvent(new Event('session-expired'));
   return Promise.reject(error);
 });
+
+export function refreshSession() {
+  if (logoutInFlight) return Promise.reject(new Error('Saída em andamento.'));
+  if (!refreshInFlight) {
+    const version = sessionVersion;
+    refreshInFlight = api.post('/api/auth/refresh', null, { ...sessionRequest, timeout: 65000 }).then(({ data }) => {
+      if (version !== sessionVersion) throw new Error('Sessão alterada.');
+      accessToken = data.accessToken;
+      return data;
+    }).finally(() => { refreshInFlight = null; });
+  }
+  return refreshInFlight;
+}
+
+export function restoreSession() {
+  // Shared across StrictMode effects, including the /me lookup. One silent attempt per page load.
+  initialSession ??= refreshSession().then(() => getCurrentUser(true)).catch(() => { setAccessToken(null); return null; });
+  return initialSession;
+}
+
+export function logoutAccount() {
+  if (!logoutInFlight) {
+    // Let an existing rotation finish before sending its replacement cookie for revocation.
+    logoutInFlight = (refreshInFlight ?? Promise.resolve()).catch(() => {}).then(() =>
+      api.post('/api/auth/logout', null, sessionRequest)
+    ).then(() => { setAccessToken(null); }).finally(() => { logoutInFlight = null; });
+  }
+  return logoutInFlight;
+}
 
 export function errorMessage(error) {
   return error.response?.data?.detail || (error.response?.status === 429
@@ -31,8 +85,8 @@ export function errorMessage(error) {
     : 'Não foi possível concluir. O servidor pode estar iniciando; aguarde um pouco e tente novamente.');
 }
 export async function registerAccount(form) { return (await api.post('/api/auth/register', form)).data; }
-export async function loginAccount(form) { return (await api.post('/api/auth/login', form)).data; }
-export async function getCurrentUser() { return (await api.get('/api/auth/me')).data; }
+export async function loginAccount(form) { return (await api.post('/api/auth/login', form, sessionRequest)).data; }
+export async function getCurrentUser(skipSessionRefresh = false) { return (await api.get('/api/auth/me', { skipSessionRefresh })).data; }
 export async function getGitHubConnection() { return (await api.get('/api/github/connection')).data; }
 export async function disconnectGitHub() { await api.delete('/api/github/connection'); }
 export const apiOrigin = new URL(api.defaults.baseURL, window.location.origin).origin;

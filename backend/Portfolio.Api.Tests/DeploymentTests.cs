@@ -66,7 +66,7 @@ public sealed class DeploymentTests
             request.Headers.Add("Access-Control-Request-Headers", "authorization,content-type");
             var response = await client.SendAsync(request);
             Assert.Equal(origin == "https://portfolio-example.vercel.app", response.Headers.Contains("Access-Control-Allow-Origin"));
-            Assert.False(response.Headers.Contains("Access-Control-Allow-Credentials"));
+            Assert.Equal(origin == "https://portfolio-example.vercel.app", response.Headers.Contains("Access-Control-Allow-Credentials"));
         }
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/me/profiles")).StatusCode);
     }

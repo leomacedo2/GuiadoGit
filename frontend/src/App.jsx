@@ -9,6 +9,7 @@ import SavedAnalysesPage from './pages/SavedAnalysesPage';
 import GitHubConnectionPage from './pages/GitHubConnectionPage';
 import ClassroomsPage from './pages/ClassroomsPage';
 import ClassroomPage from './pages/ClassroomPage';
+import { errorMessage } from './services/api';
 
 export default function App() { return <AnalysisProvider><AppContent /></AnalysisProvider>; }
 function RequireAccount({ children }) { return useAuth().user ? children : <Navigate to="/" replace />; }
@@ -18,6 +19,14 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
+  async function signOut() {
+    setSigningOut(true); setLogoutError('');
+    try { await logout(); setMenuOpen(false); navigate('/'); }
+    catch (error) { setLogoutError(`Não foi possível encerrar a sessão. ${errorMessage(error)}`); }
+    finally { setSigningOut(false); }
+  }
   const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-bs-theme') || 'dark');
   const entrance = ['/', '/login', '/cadastro'].includes(location.pathname);
   function toggleTheme() {
@@ -40,7 +49,7 @@ function AppContent() {
       <div className="container py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
         <Link to="/" className="fw-bold fs-5 text-body text-decoration-none">GuiaDoGit</Link>
         <div className="d-flex flex-wrap align-items-center gap-2">
-          {!entrance && (user ? <><span className="small account-name text-break">{user.nome}</span><button className="btn btn-sm btn-outline-secondary" onClick={() => { logout(); setMenuOpen(false); navigate('/'); }}>Sair</button></>
+          {!entrance && (user ? <><span className="small account-name text-break">{user.nome}</span><button className="btn btn-sm btn-outline-secondary" disabled={signingOut} onClick={signOut}>Sair</button></>
             : <Link className="btn btn-sm btn-outline-primary" to="/">Entrar / Criar conta</Link>)}
           <button className="btn btn-sm btn-outline-secondary" onClick={toggleTheme} aria-label="Modo escuro" aria-pressed={theme === 'dark'}>{theme === 'dark' ? 'Tema claro' : 'Tema escuro'}</button>
         </div>
@@ -55,6 +64,7 @@ function AppContent() {
       </nav>}
     </header>
     <main className="container py-4 py-md-5">
+      {logoutError && <div className="alert alert-danger" role="alert">{logoutError}</div>}
       <Routes>
         <Route path="/" element={<AuthPage key="entrance" entrance />} />
         <Route path="/login" element={<AuthPage key="login" entrance />} />

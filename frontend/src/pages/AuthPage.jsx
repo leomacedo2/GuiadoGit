@@ -46,6 +46,6 @@ export default function AuthPage({ register = false }) {
     <Link className="btn btn-outline-primary w-100 mt-3" to={register ? '/login' : '/cadastro'}>{register ? 'Já tenho conta' : 'Criar conta'}</Link>
     </div></div>
     <Link className="btn btn-outline-secondary w-100 mt-3" to="/analisar">Continuar como visitante</Link>
-    <p className="small text-body-secondary mt-3">Sua conta da plataforma é independente do GitHub. A sessão fica apenas nesta aba e termina ao recarregar ou após 30 minutos; suas análises salvas permanecem.</p>
+    <p className="small text-body-secondary mt-3">Sua conta da plataforma é independente do GitHub. A sessão pode ser restaurada por até 30 dias. Use Sair em dispositivos compartilhados; suas análises salvas permanecem.</p>
   </section>;
 }

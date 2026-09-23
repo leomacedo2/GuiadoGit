@@ -6,6 +6,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Portfolio.Api.Deployment;
 using Portfolio.Api.OAuth;
+using Portfolio.Api.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 var listenUrl = DeploymentConfiguration.ListenUrl(builder.Configuration, builder.Environment.IsDevelopment());
@@ -40,7 +41,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 builder.Services.AddAuthentication(IdentityConstants.BearerScheme).AddBearerToken(IdentityConstants.BearerScheme,
     options =>
     {
-        options.BearerTokenExpiration = TimeSpan.FromMinutes(30);
+        options.BearerTokenExpiration = TimeSpan.FromMinutes(10);
         // Only this top-level popup POST accepts the platform bearer in its form body.
         // It is still validated by the official bearer handler, never taken from the URL.
         options.Events.OnMessageReceived = async context =>
@@ -58,6 +59,7 @@ builder.Services.AddAuthentication(IdentityConstants.BearerScheme).AddBearerToke
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<RefreshSessionService>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = 429;
@@ -86,7 +88,7 @@ builder.Services.AddSingleton<SkillDetector>();
 builder.Services.AddSingleton<RecommendationService>();
 builder.Services.AddCors(options => options.AddPolicy("Frontend", policy => policy
     .WithOrigins(DeploymentConfiguration.Origins(builder.Configuration, builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")))
-    .WithMethods("GET", "POST", "PUT", "DELETE").AllowAnyHeader()));
+    .WithMethods("GET", "POST", "PUT", "DELETE").AllowAnyHeader().AllowCredentials()));
 GitHubClientConfiguration.Validate(builder.Configuration);
 builder.Services.AddSingleton<GitHubRateLimitState>();
 builder.Services.AddTransient<GitHubRateLimitHandler>();

@@ -23,8 +23,11 @@ async function mockApi(page, saved = false, transform = value => value) {
     const path = url.pathname;
     if (path.startsWith('/api/')) {
       calls.push({ path, method: route.request().method(), authorization: route.request().headers().authorization });
-      const reply = data => route.fulfill({ json: data, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization,content-type' } });
-      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization,content-type', 'access-control-allow-methods': 'GET,POST,PUT,DELETE' } });
+      const headers = { 'access-control-allow-origin': 'http://127.0.0.1:4173', 'access-control-allow-credentials': 'true', 'access-control-allow-headers': 'authorization,content-type,x-session-request', 'access-control-allow-methods': 'GET,POST,PUT,DELETE' };
+      const reply = data => route.fulfill({ json: data, headers });
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+      if (path === '/api/auth/refresh') return route.fulfill({ status: 401, json: {}, headers });
+      if (path === '/api/auth/logout') return reply({});
       if (path === '/api/auth/login') return reply({ accessToken: 'platform-test-only', expiresIn: 1800 });
       if (path === '/api/auth/me') return reply({ id: 'account-1', nome: 'Conta de teste', email: 'test@example.test' });
       if (path === '/api/auth/register') return reply({ id: 'account-1' });
@@ -101,7 +104,7 @@ test('lista abre snapshot sem coleta, atualiza por POST e remove somente víncul
   await nav(page, 'Minhas análises');
   await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
   await expect(page).toHaveURL(/\/perfil\/perfil-teste$/);
-  expect(calls.filter(c => c.path.endsWith('/refresh') && c.method === 'POST')).toHaveLength(1);
+  expect(calls.filter(c => c.path.startsWith('/api/analyses/') && c.path.endsWith('/refresh') && c.method === 'POST')).toHaveLength(1);
   await nav(page, 'Minhas análises');
   await page.getByRole('button', { name: 'Remover', exact: true }).click();
   await expect(page.getByText('Você ainda não possui análises salvas.')).toBeVisible();

@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Portfolio.Api.Data;
 using Portfolio.Api.Services;
+using Portfolio.Api.Auth;
+using Portfolio.Api.Deployment;
 
 namespace Portfolio.Api.Controllers;
 
@@ -18,7 +20,8 @@ public sealed record LoginRequest([Required, EmailAddress] string Email, [Requir
 [ApiController, Route("api/auth"), EnableRateLimiting("auth")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class AuthController(UserManager<ApplicationUser> users, SignInManager<ApplicationUser> signIn,
-    PersistentAnalysisService persistence) : ControllerBase
+    PersistentAnalysisService persistence, RefreshSessionService sessions,
+    IConfiguration configuration, IWebHostEnvironment environment) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest request)
@@ -36,13 +39,37 @@ public sealed class AuthController(UserManager<ApplicationUser> users, SignInMan
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request)
     {
+        if (!TrustedOrigin()) return StatusCode(403);
         if (!persistence.IsConfigured) return DatabaseUnavailable();
         var user = await users.FindByEmailAsync(request.Email.Trim());
         if (user is null || !(await signIn.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true)).Succeeded)
             return Problem(statusCode: 401, detail: "E-mail ou senha inválidos, ou acesso temporariamente bloqueado. Tente novamente mais tarde.");
-        var principal = await signIn.CreateUserPrincipalAsync(user);
-        return SignIn(principal, IdentityConstants.BearerScheme);
+        return Ok(await sessions.LoginAsync(user, HttpContext, HttpContext.RequestAborted));
     }
+
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh(CancellationToken ct)
+    {
+        if (!TrustedSessionRequest()) return StatusCode(403);
+        if (!persistence.IsConfigured) return DatabaseUnavailable();
+        var access = await sessions.RefreshAsync(HttpContext, ct);
+        return access is null ? Unauthorized() : Ok(access);
+    }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(CancellationToken ct)
+    {
+        if (!TrustedSessionRequest()) return StatusCode(403);
+        if (!persistence.IsConfigured) return DatabaseUnavailable();
+        return await sessions.LogoutAsync(HttpContext, ct) ? NoContent() : Unauthorized();
+    }
+
+    // A non-simple header prevents form/no-cors CSRF. CORS permits its preflight only for configured origins.
+    // Non-browser clients can omit Origin, but cannot bypass the custom header requirement.
+    private bool TrustedSessionRequest() => Request.Headers["X-Session-Request"] == "1" && TrustedOrigin();
+    private bool TrustedOrigin() => !Request.Headers.ContainsKey("Origin") ||
+        DeploymentConfiguration.Origins(configuration, environment.IsDevelopment() || environment.IsEnvironment("Testing"))
+            .Contains(Request.Headers.Origin.ToString(), StringComparer.Ordinal);
 
     [Authorize, HttpGet("me")]
     public async Task<IActionResult> Me()

@@ -30,11 +30,13 @@ async function mock(page, empty = false, commitOverride = null) {
   const summary = item => ({ ...item, memberCount: item.profileIds.length, technologies: rankedTechnologies ?? [{ label: 'React', count: item.profileIds.length }] });
   await page.route('**/*', async route => {
     const request = route.request(); const url = new URL(request.url()); const path = url.pathname; const method = request.method();
-    const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization,content-type', 'access-control-allow-methods': 'GET,POST,PUT,DELETE' };
+    const headers = { 'access-control-allow-origin': 'http://127.0.0.1:4173', 'access-control-allow-credentials': 'true', 'access-control-allow-headers': 'authorization,content-type,x-session-request', 'access-control-allow-methods': 'GET,POST,PUT,DELETE' };
     const reply = (data, status = 200) => route.fulfill({ status, json: data, headers });
     if (path.startsWith('/api/')) {
       if (method === 'OPTIONS') return route.fulfill({ status: 204, headers });
       calls.push({ path, method, authorization: request.headers().authorization });
+      if (path === '/api/auth/refresh') return reply({}, 401);
+      if (path === '/api/auth/logout') return reply({});
       if (path === '/api/auth/login') return reply({ accessToken: 'platform-test-only', expiresIn: 1800 });
       if (path === '/api/auth/me') return reply({ id: 'teacher-context', nome: 'Conta de teste' });
       if (path === '/api/me/profiles') return reply(students);

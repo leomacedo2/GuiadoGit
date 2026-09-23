@@ -7,6 +7,7 @@ namespace Portfolio.Api.Data;
 public sealed class PortfolioDbContext(DbContextOptions<PortfolioDbContext> options)
     : IdentityDbContext<ApplicationUser>(options), IDataProtectionKeyContext
 {
+    public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
     public DbSet<GitHubConnection> GitHubConnections => Set<GitHubConnection>();
     public DbSet<GitHubOAuthAttempt> GitHubOAuthAttempts => Set<GitHubOAuthAttempt>();
@@ -21,6 +22,12 @@ public sealed class PortfolioDbContext(DbContextOptions<PortfolioDbContext> opti
         base.OnModelCreating(model);
         // Not exposed by Supabase's default public-schema Data API.
         model.HasDefaultSchema("portfolio");
+        model.Entity<RefreshSession>().HasIndex(s => s.TokenHash).IsUnique();
+        model.Entity<RefreshSession>().Property(s => s.TokenHash).HasMaxLength(64);
+        model.Entity<RefreshSession>().Property(s => s.SecurityStamp).HasMaxLength(256);
+        model.Entity<RefreshSession>().HasIndex(s => s.ExpiresAt);
+        model.Entity<RefreshSession>().HasOne(s => s.ApplicationUser).WithMany()
+            .HasForeignKey(s => s.ApplicationUserId).OnDelete(DeleteBehavior.Cascade);
         model.Entity<GitHubConnection>().HasIndex(x => x.ApplicationUserId).IsUnique();
         model.Entity<GitHubConnection>().HasIndex(x => x.GitHubUserId).IsUnique();
         model.Entity<GitHubConnection>().HasOne(x => x.ApplicationUser).WithOne().HasForeignKey<GitHubConnection>(x => x.ApplicationUserId);
