@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { errorMessage, registerAccount } from "../services/api";
 import logoGuiadoGit from "../assets/branding/logo-guiadogit.png";
+import LogoLoading from "../components/LogoLoading";
 
 export default function AuthPage({ register = false }) {
   const { login, user } = useAuth();
@@ -127,14 +128,19 @@ export default function AuthPage({ register = false }) {
             <button className="btn btn-primary w-100" disabled={busy}>
               {busy ? "Aguarde…" : register ? "Criar conta" : "Entrar"}
             </button>
-
-            {busy && (
-              <p className="form-text" role="status">
-                A primeira conexão pode demorar enquanto o servidor inicia.
-              </p>
-            )}
           </form>
 
+          {busy && (
+            <LogoLoading
+              overlay
+              text={
+                register
+                  ? "Criando sua conta… A primeira conexão pode demorar enquanto o servidor inicia."
+                  : "Entrando na plataforma… A primeira conexão pode demorar enquanto o servidor inicia."
+              }
+              size={72}
+            />
+          )}
           <Link
             className="btn btn-outline-primary w-100 mt-3"
             to={register ? "/login" : "/cadastro"}

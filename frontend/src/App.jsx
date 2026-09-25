@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Link,
   NavLink,
@@ -22,7 +22,7 @@ import SavedAnalysesPage from "./pages/SavedAnalysesPage";
 import GitHubConnectionPage from "./pages/GitHubConnectionPage";
 import ClassroomsPage from "./pages/ClassroomsPage";
 import ClassroomPage from "./pages/ClassroomPage";
-import { errorMessage } from "./services/api";
+import { errorMessage, getGitHubConnection } from "./services/api";
 import logoGuiadoGitIcon from "./assets/branding/logo-guiadogit-icon.png";
 
 export default function App() {
@@ -43,6 +43,35 @@ function AppContent() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
+  const [githubRateLimit, setGithubRateLimit] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!user) {
+      setGithubRateLimit(null);
+      return;
+    }
+
+    getGitHubConnection()
+      .then((connection) => {
+        if (!active) return;
+
+        if (connection?.connected && connection?.rateLimit) {
+          setGithubRateLimit(connection.rateLimit);
+        } else {
+          setGithubRateLimit(null);
+        }
+      })
+      .catch(() => {
+        if (active) setGithubRateLimit(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user, location.pathname]);
+
   async function signOut() {
     setSigningOut(true);
     setLogoutError("");
@@ -110,6 +139,20 @@ function AppContent() {
                   <span className="small account-name text-break">
                     {user.nome}
                   </span>
+
+                  {githubRateLimit?.remaining != null && (
+                    <span
+                      className="github-rate-limit small"
+                      title={
+                        githubRateLimit.resetAt
+                          ? `Reset: ${new Date(githubRateLimit.resetAt).toLocaleString("pt-BR")}`
+                          : "Limite da API GitHub"
+                      }
+                    >
+                      GitHub API: {githubRateLimit.remaining}/5000
+                    </span>
+                  )}
+
                   <button
                     className="btn btn-sm btn-outline-secondary"
                     disabled={signingOut}
