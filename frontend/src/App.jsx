@@ -91,6 +91,12 @@ function AppContent() {
     () => document.documentElement.getAttribute("data-bs-theme") || "dark",
   );
   const entrance = ["/", "/login", "/cadastro"].includes(location.pathname);
+
+  const isAnalysisPage =
+    location.pathname.startsWith("/perfil/") ||
+    location.pathname === "/skills" ||
+    location.pathname === "/recomendacoes" ||
+    location.pathname === "/repositorios";
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-bs-theme", next);
@@ -106,16 +112,20 @@ function AppContent() {
     select(result.profile.username.toLowerCase());
     navigate(profilePath(result.profile.username));
   }
-  const links = [
-    ...(user ? [["/minhas-analises", "Minhas análises"]] : []),
+  const mainLinks = [
     ["/analisar", "Analisar perfil"],
+    ...(user ? [["/minhas-analises", "Minhas análises"]] : []),
     ...(user ? [["/turmas", "Turmas"]] : []),
-    ...(activeUsername ? [[profilePath(activeUsername), "Perfil"]] : []),
-    [resultPath("/skills", activeUsername), "Skills"],
-    [resultPath("/recomendacoes", activeUsername), "Recomendações"],
-    [resultPath("/repositorios", activeUsername), "Repositórios"],
-    ...(user ? [["/github", "Conexão GitHub"]] : []),
   ];
+
+  const analysisLinks = activeUsername
+    ? [
+        [profilePath(activeUsername), "Visão geral"],
+        [resultPath("/skills", activeUsername), "Skills"],
+        [resultPath("/recomendacoes", activeUsername), "Recomendações"],
+        [resultPath("/repositorios", activeUsername), "Repositórios"],
+      ]
+    : [];
   return (
     <div className="app-shell">
       <header className="border-bottom bg-body">
@@ -153,6 +163,15 @@ function AppContent() {
                     </span>
                   )}
 
+                  {githubRateLimit?.remaining == null && (
+                    <Link
+                      className="btn btn-sm btn-outline-primary"
+                      to="/github"
+                    >
+                      Conectar GitHub
+                    </Link>
+                  )}
+
                   <button
                     className="btn btn-sm btn-outline-secondary"
                     disabled={signingOut}
@@ -177,35 +196,63 @@ function AppContent() {
           </div>
         </div>
         {!entrance && (
-          <nav className="container pb-3" aria-label="Navegação principal">
-            <button
-              className="btn btn-outline-secondary d-md-none mb-2"
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-expanded={menuOpen}
-              aria-controls="main-navigation"
-            >
-              Menu
-            </button>
-            <div
-              id="main-navigation"
-              className={`${menuOpen ? "d-block" : "d-none"} d-md-block`}
-            >
-              <div className="nav nav-pills flex-column flex-md-row gap-1">
-                {links.map(([path, label]) => (
-                  <NavLink
-                    key={label}
-                    to={path}
-                    onClick={() => setMenuOpen(false)}
-                    className={({ isActive }) =>
-                      `nav-link ${isActive ? "active" : ""}`
-                    }
-                  >
-                    {label}
-                  </NavLink>
-                ))}
+          <>
+            <nav className="container pb-3" aria-label="Navegação principal">
+              <button
+                className="btn btn-outline-secondary d-md-none mb-2"
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-expanded={menuOpen}
+                aria-controls="main-navigation"
+              >
+                Menu
+              </button>
+
+              <div
+                id="main-navigation"
+                className={`${menuOpen ? "d-block" : "d-none"} d-md-block`}
+              >
+                <div className="nav nav-pills flex-column flex-md-row gap-1">
+                  {mainLinks.map(([path, label]) => (
+                    <NavLink
+                      key={label}
+                      to={path}
+                      onClick={() => setMenuOpen(false)}
+                      className={({ isActive }) =>
+                        `nav-link ${isActive ? "active" : ""}`
+                      }
+                    >
+                      {label}
+                    </NavLink>
+                  ))}
+                </div>
               </div>
-            </div>
-          </nav>
+            </nav>
+
+            {activeUsername && isAnalysisPage && (
+              <div className="analysis-nav-wrapper border-top">
+                <div className="container py-3">
+                  <div className="analysis-nav-context small mb-2">
+                    Perfil analisado:
+                    <strong className="ms-1">@{activeUsername}</strong>
+                  </div>
+
+                  <div className="nav nav-pills flex-column flex-md-row gap-1">
+                    {analysisLinks.map(([path, label]) => (
+                      <NavLink
+                        key={label}
+                        to={path}
+                        className={({ isActive }) =>
+                          `nav-link ${isActive ? "active" : ""}`
+                        }
+                      >
+                        {label}
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </header>
       <main className="container py-4 py-md-5">
