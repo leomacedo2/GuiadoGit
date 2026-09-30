@@ -14,6 +14,7 @@ import ActivityPanel from "../components/ActivityPanel";
 import ClassroomMembersForm from "../components/ClassroomMembersForm";
 import ClassroomNameForm from "../components/ClassroomNameForm";
 import LogoLoading from "../components/LogoLoading";
+import { classroomTechnologyPath } from '../analysis/technologyRepositories';
 
 function age(date) {
   const days = Math.max(
@@ -322,6 +323,7 @@ export default function ClassroomPage({ onOpen }) {
                 : classroom.commitActivity
             }
             classroom={!selectedStudent}
+            technologyLink={technology => ({ to: classroomTechnologyPath(id, technology, selectedStudent?.gitHubProfileId) })}
           />
           <h2 className="h4" id="classroom-students">
             Alunos da turma

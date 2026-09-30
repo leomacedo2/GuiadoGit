@@ -1,9 +1,10 @@
 import { lazy, Suspense, useId, useState } from 'react';
 import { activityWindow, monthLabel } from '../analysis/activityData';
 import TechnologyLimitSelect from './TechnologyLimitSelect';
+import { Link } from 'react-router-dom';
 const ActivityChart = lazy(() => import('./ActivityChart'));
 
-export default function ActivityPanel({ activity, classroom = false }) {
+export default function ActivityPanel({ activity, classroom = false, technologyLink }) {
   const [period, setPeriod] = useState(12);
   const [technologyLimit, setTechnologyLimit] = useState('5');
   const id = useId();
@@ -30,6 +31,9 @@ export default function ActivityPanel({ activity, classroom = false }) {
       {!classroom && <p className="small text-body-secondary">Histórico completo em {activity.completedRepositories} de {activity.eligibleRepositories} repositórios elegíveis; {activity.inspectedRepositories} consultados. Forks e repositórios arquivados ficam fora deste gráfico.</p>}
       {series.length ? <>
         <Suspense fallback={<p role="status">Carregando gráfico…</p>}><ActivityChart months={months} series={series} /></Suspense>
+        {technologyLink && <div className="d-flex flex-wrap gap-2 mt-3" aria-label="Repositórios por tecnologia">
+          {series.map(item => <Link key={item.name} className="btn btn-sm btn-outline-primary text-break" {...technologyLink(item.name)}>{item.name} — Ver repositórios</Link>)}
+        </div>}
         <details className="small mt-3"><summary>Ver atividade em tabela</summary><div className="table-responsive">
           <table className="table table-sm text-nowrap mt-2"><caption>Commits por tecnologia e mês. 0 indica nenhum commit na cobertura completa; — indica contagem indisponível ou incompleta.</caption>
             <thead><tr><th scope="col">Mês (UTC)</th>{series.map(item => <th scope="col" key={item.name}>{item.name}</th>)}</tr></thead>

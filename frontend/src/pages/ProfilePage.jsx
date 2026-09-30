@@ -9,6 +9,7 @@ import ChartPanel from "../components/ChartPanel";
 import SkillCard from "../components/SkillCard";
 import ActivityPanel from "../components/ActivityPanel";
 import LogoLoading from "../components/LogoLoading";
+import { profileTechnologyPath, technologyRepositories } from '../analysis/technologyRepositories';
 
 export default function ProfilePage({ analysis }) {
   const { user } = useAuth();
@@ -166,7 +167,10 @@ export default function ProfilePage({ analysis }) {
           />
         </div>
       </div>
-      <ActivityPanel activity={analysis.commitActivity} />
+      <ActivityPanel activity={analysis.commitActivity} technologyLink={technology => ({
+        to: profileTechnologyPath(username, technology),
+        state: { technologyEvidence: { username, technology, repositories: technologyRepositories(analysis, technology) } }
+      })} />
       <h2 className="h4">Trilhas sugeridas</h2>
       {analysis.learningTracks?.length ? (
         <div className="row g-3 mb-3">

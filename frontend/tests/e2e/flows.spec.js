@@ -218,3 +218,25 @@ test('perfil vazio oferece somente opções introdutórias neutras, sem novas co
   await noOverflow(page);
   expect(calls.filter(c => c.path.startsWith('/api/analyses/'))).toHaveLength(1);
 });
+
+test('tecnologia do gráfico abre evidências do perfil por teclado sem nova análise', async ({ page }) => {
+  const calls = await mockApi(page, false, result => ({ ...result, commitActivity: {
+    months: ['2026-09'], series: [{ name: 'C#', counts: [4] }, { name: 'Inexistente', counts: [1] }], warnings: []
+  } }));
+  await page.goto('/perfil/perfil-teste');
+  const link = page.getByRole('link', { name: 'C# — Ver repositórios', exact: true });
+  await link.focus(); await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/perfil\/perfil-teste\/tecnologia\/C%23$/);
+  await expect(page.getByRole('heading', { name: 'C#', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'projeto-1', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'projeto-2', exact: true })).toHaveCount(0);
+  await page.getByText('Ver evidências', { exact: true }).click();
+  await expect(page.getByText('Dependência declarada no manifesto.', { exact: true })).toBeVisible();
+  await page.reload(); // Link state survives reload without fetching an analysis.
+  await expect(page.getByRole('heading', { name: 'projeto-1', exact: true })).toBeVisible();
+  expect(calls.filter(c => c.path.startsWith('/api/analyses/') && c.method !== 'OPTIONS')).toHaveLength(1);
+  await page.getByRole('link', { name: 'Voltar', exact: true }).click();
+  await page.getByRole('link', { name: 'Inexistente — Ver repositórios', exact: true }).click();
+  await expect(page.getByText('Nenhum repositório com evidência desta tecnologia nos snapshots disponíveis.')).toBeVisible();
+  await noOverflow(page);
+});

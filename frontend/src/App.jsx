@@ -22,6 +22,7 @@ import SavedAnalysesPage from "./pages/SavedAnalysesPage";
 import GitHubConnectionPage from "./pages/GitHubConnectionPage";
 import ClassroomsPage from "./pages/ClassroomsPage";
 import ClassroomPage from "./pages/ClassroomPage";
+import TechnologyRepositoriesPage from './pages/TechnologyRepositoriesPage';
 import { errorMessage, getGitHubConnection } from "./services/api";
 import logoGuiadoGitIcon from "./assets/branding/logo-guiadogit-icon.png";
 
@@ -262,6 +263,8 @@ function AppContent() {
           </div>
         )}
         <Routes>
+          <Route path="/perfil/:username/tecnologia/:technology" element={<TechnologyRepositoriesPage />} />
+          <Route path="/turmas/:id/tecnologia/:technology" element={<RequireAccount><TechnologyRepositoriesPage classroom /></RequireAccount>} />
           <Route path="/" element={<AuthPage key="entrance" entrance />} />
           <Route path="/login" element={<AuthPage key="login" entrance />} />
           <Route
